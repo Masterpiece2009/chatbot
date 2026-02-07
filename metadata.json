@@ -1,0 +1,7 @@
+{
+  "name": "Copy of Gemini Pocket",
+  "description": "A mobile-first personal AI assistant featuring Chat, Image Generation, and Text-to-Speech capabilities, designed to look and feel like a native mobile application.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
