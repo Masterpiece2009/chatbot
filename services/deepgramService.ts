@@ -1,5 +1,6 @@
 // Service for Deepgram Speech-to-Text
-const DEEPGRAM_KEY = process.env.DEEPGRAM_API_KEY;
+// HARDCODED API KEY
+const DEEPGRAM_KEY = "73c540241ef5debcb10445d74d7e63612ac1942f";
 
 export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
   if (!DEEPGRAM_KEY) {
@@ -12,7 +13,7 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
       method: 'POST',
       headers: {
         'Authorization': `Token ${DEEPGRAM_KEY}`,
-        'Content-Type': 'audio/wav', // Browser MediaRecorder usually outputs webm/ogg but Deepgram is flexible
+        'Content-Type': 'audio/wav', 
       },
       body: audioBlob,
     });

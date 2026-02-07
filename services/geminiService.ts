@@ -1,7 +1,10 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { TTSVoice } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// HARDCODED API KEY
+const API_KEY = "AIzaSyBd8JBWfZsCAFajlMHS3kT2vsxGn4RrEWY";
+
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 // System instruction to define Mn3em's personality and logic
 const SYSTEM_INSTRUCTION = `
@@ -33,17 +36,12 @@ Response: "||SAVE_NOTE: Buy bread|| ماشي يا بطل، سجلتها. متن�
 `;
 
 export const sendMessage = async (message: string, history: {role: string, parts: {text: string}[]}[] = []) => {
-  if (!process.env.API_KEY) {
-    return "Error: API Key is missing. Please add API_KEY to Vercel Environment Variables and REDEPLOY.";
-  }
-
   try {
     // Limit history to last 15 turns for better context
     const recentHistory = history.slice(-15);
 
     const chat = ai.chats.create({
-      // Switched to 2.0 Flash Exp for better public availability
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-2.0-flash-exp', // Using the fast experimental model
       history: recentHistory, 
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -54,11 +52,7 @@ export const sendMessage = async (message: string, history: {role: string, parts
     return result.text;
   } catch (error: any) {
     console.error("Chat Error:", error);
-    if (error.status === 429 || error.message?.includes('429')) {
-      return "Systems Overheating. اهدى شوية يا وحش.";
-    }
-    // More detailed error message for debugging
-    return `Network glitch (${error.status || 'Unknown'}). Check API Key or Model availability.`;
+    return `Network error: ${error.message || "Unknown"}. Check console for details.`;
   }
 };
 
@@ -67,7 +61,6 @@ export const generateSpeech = async (text: string) => {
     const cleanText = text.replace(/\|\|SAVE_NOTE:.*?\|\|/g, '').trim();
     if (!cleanText) return null;
 
-    // Using 2.0 Flash Exp for TTS as well
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash-exp", 
       contents: [{ parts: [{ text: cleanText }] }],
@@ -86,14 +79,12 @@ export const generateSpeech = async (text: string) => {
     return base64Audio;
   } catch (error) {
     console.error("TTS Error:", error);
-    // Silent fail for voice to keep chat working
     return null;
   }
 };
 
 export const generateImage = async (prompt: string): Promise<string> => {
   try {
-    // Using Imagen 3 for better compatibility
     const response = await ai.models.generateImages({
       model: 'imagen-3.0-generate-001',
       prompt: prompt,
@@ -103,7 +94,6 @@ export const generateImage = async (prompt: string): Promise<string> => {
       }
     });
 
-    // The SDK structure for generateImages is different than generateContent
     const base64EncodeString = response.generatedImages?.[0]?.image?.imageBytes;
     if (base64EncodeString) {
       return `data:image/png;base64,${base64EncodeString}`;
