@@ -37,12 +37,15 @@ Response: "||SAVE_NOTE: Buy bread|| ماشي يا بطل، سجلتها. متن�
 
 export const sendMessage = async (message: string, history: {role: string, parts: {text: string}[]}[] = []) => {
   try {
-    // Limit history to last 15 turns for better context
-    const recentHistory = history.slice(-15);
+    // FIX: Filter history to ensure it starts with a user turn.
+    const validHistory = history.filter((msg, index) => {
+      if (index === 0 && msg.role === 'model') return false;
+      return true;
+    });
 
     const chat = ai.chats.create({
-      model: 'gemini-2.0-flash-exp', // Using the fast experimental model
-      history: recentHistory, 
+      model: 'gemini-2.0-flash', // Switched to 2.0 Flash (Stable)
+      history: validHistory, 
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
       }
@@ -52,7 +55,7 @@ export const sendMessage = async (message: string, history: {role: string, parts
     return result.text;
   } catch (error: any) {
     console.error("Chat Error:", error);
-    return `Network error: ${error.message || "Unknown"}. Check console for details.`;
+    return `Network error: ${error.message || "Unknown"}. Try refreshing the page.`;
   }
 };
 
@@ -62,7 +65,7 @@ export const generateSpeech = async (text: string) => {
     if (!cleanText) return null;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash-exp", 
+      model: "gemini-2.0-flash", // 2.0 Flash supports Audio generation
       contents: [{ parts: [{ text: cleanText }] }],
       config: {
         responseModalities: [Modality.AUDIO],

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from '../types';
 import { sendMessage } from '../services/geminiService';
-import { Send, Loader2, Cpu } from 'lucide-react';
+import { Send, Loader2, Cpu, Download } from 'lucide-react';
 
 interface ChatTabProps {
   onNoteDetected: (content: string) => void;
@@ -20,6 +20,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -29,6 +30,22 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = () => {
+    if (installPrompt) {
+      installPrompt.prompt();
+      setInstallPrompt(null);
+    }
+  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -101,6 +118,15 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
         
         {/* User Profile in Header */}
         <div className="flex items-center gap-3">
+           {installPrompt && (
+              <button 
+                onClick={handleInstallClick}
+                className="p-2 bg-accent-500/20 text-accent-500 rounded-full animate-pulse mr-2"
+                title="Install App"
+              >
+                <Download size={18} />
+              </button>
+           )}
            <div className="text-[10px] text-primary-500/70 font-mono tracking-widest text-right hidden sm:block">
               PROJECT<br/>IRON
            </div>
