@@ -18,12 +18,13 @@ export const VoiceTab: React.FC<VoiceTabProps> = ({ onNoteDetected }) => {
     setIsLoading(true);
     try {
       // 1. Send to "Brain" (Chat Model) first to get intelligent response and check for notes
-      const aiResponseText = await sendMessage(text, []); 
+      // Fallback to empty string if undefined to satisfy TS strict null checks
+      const aiResponseText = (await sendMessage(text, [])) || ""; 
 
       // 2. Check for Note Command in the AI response
       let finalTextToSpeak = aiResponseText;
       const noteRegex = /\|\|SAVE_NOTE:(.*?)\|\|/;
-      const match = aiResponseText?.match(noteRegex);
+      const match = aiResponseText.match(noteRegex);
       
       if (match && match[1]) {
         onNoteDetected(match[1].trim());

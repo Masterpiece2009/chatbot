@@ -50,11 +50,12 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
         parts: [{ text: m.text }]
       }));
 
-      let responseText = await sendMessage(userMsg.text, history);
+      // Fallback to empty string if undefined to satisfy TS strict null checks
+      let responseText = (await sendMessage(userMsg.text, history)) || "";
       
       // Detect Note
       const noteRegex = /\|\|SAVE_NOTE:(.*?)\|\|/;
-      const match = responseText?.match(noteRegex);
+      const match = responseText.match(noteRegex);
       if (match && match[1]) {
         onNoteDetected(match[1].trim());
         // Remove the technical note command from the visible chat
