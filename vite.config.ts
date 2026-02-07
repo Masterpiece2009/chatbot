@@ -6,8 +6,9 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
-      // This ensures process.env.API_KEY works in the browser
-      'process.env.API_KEY': JSON.stringify(env.API_KEY)
+      // Expose env vars to the browser
+      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      'process.env.DEEPGRAM_API_KEY': JSON.stringify(env.DEEPGRAM_API_KEY || "73c540241ef5debcb10445d74d7e63612ac1942f") // Fallback to provided key
     }
   };
 });

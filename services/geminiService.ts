@@ -33,6 +33,10 @@ Response: "||SAVE_NOTE: Buy bread|| ماشي يا بطل، سجلتها. متن�
 `;
 
 export const sendMessage = async (message: string, history: {role: string, parts: {text: string}[]}[] = []) => {
+  if (!process.env.API_KEY) {
+    return "Error: API Key is missing. Please add API_KEY to Vercel Environment Variables.";
+  }
+
   try {
     // Limit history to last 15 turns for better context
     const recentHistory = history.slice(-15);
@@ -52,7 +56,7 @@ export const sendMessage = async (message: string, history: {role: string, parts
     if (error.status === 429 || error.message?.includes('429')) {
       return "Systems Overheating. اهدى شوية يا وحش.";
     }
-    return "Network glitch. Grab a coffee, I'll fix it.";
+    return "Network glitch. (Check your Gemini API Key in Vercel settings)";
   }
 };
 
