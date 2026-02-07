@@ -1,10 +1,10 @@
 {
-  "name": "Gemini Pocket",
-  "short_name": "Pocket AI",
+  "name": "Mn3em AI",
+  "short_name": "Mn3em",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
+  "background_color": "#020617",
+  "theme_color": "#ef4444",
   "orientation": "portrait",
   "icons": [
     {
