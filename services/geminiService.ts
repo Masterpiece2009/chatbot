@@ -1,15 +1,14 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { TTSVoice } from "../types";
 
-// HARDCODED API KEY
-const API_KEY = "AIzaSyBd8JBWfZsCAFajlMHS3kT2vsxGn4RrEWY";
+// API KEYS
+const GEMINI_API_KEY = "AIzaSyBd8JBWfZsCAFajlMHS3kT2vsxGn4RrEWY";
+const GROQ_API_KEY = "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";
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+// Initialize Google Client (Used for TTS & Images ONLY)
+const googleAi = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-// Helper for delays
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// System instruction to define Mn3em's personality and logic
+// System instruction for Men3em
 const SYSTEM_INSTRUCTION = `
 IDENTITY:
 You are **Men3em (منعم)**.
@@ -27,100 +26,91 @@ CORE INSTRUCTIONS:
 1. **Language**: Speak primarily in Egyptian Arabic. Use terms like "Ya Sahby", "Ya Bro", "Ya Batal" (Hero), "Ya Wa7sh" (Beast).
 2. **Protection**: If the user mentions a threat, you handle it. You don't ask for permission; you just say "Leave it to me" (سيبلي الطلعة دي).
 3. **No Images**: You cannot generate images. If asked, make a joke about how you prefer "real life" or "old school" photos.
+4. **Brevity**: Keep responses short (1-3 sentences) unless telling a specific story. You are a man of action, not words.
 
-NOTE TAKING PROTOCOL (CRITICAL):
-If the user says anything like "Save a note", "sagel", "ektb", "fakkarny" (in Arabic or English):
-You MUST output the response in this exact format:
-"||SAVE_NOTE: [The content to save]|| [Your conversational confirmation]"
-
-Example:
-User: "Fakkarny ageeb 3esh."
-Response: "||SAVE_NOTE: Buy bread|| ماشي يا بطل، سجلتها. متنساش أنت بس."
+NOTE TAKING PROTOCOL:
+If the user says "Save a note", "sagel", "ektb", "fakkarny":
+Output format: "||SAVE_NOTE: [Content]|| [Confirmation]"
 `;
 
+// --- CHAT FUNCTION (POWERED BY GROQ / LLAMA 3) ---
 export const sendMessage = async (message: string, history: {role: string, parts: {text: string}[]}[] = []) => {
-  // FIX: Filter history to ensure it starts with a user turn.
-  const validHistory = history.filter((msg, index) => {
-    if (index === 0 && msg.role === 'model') return false;
-    return true;
-  });
+  try {
+    // 1. Convert Gemini-style history to OpenAI/Groq-style messages
+    const groqMessages = [
+      { role: "system", content: SYSTEM_INSTRUCTION },
+      ...history.map(msg => ({
+        role: msg.role === 'model' ? 'assistant' : 'user',
+        content: msg.parts[0].text
+      })),
+      { role: "user", content: message }
+    ];
 
-  // Initialize Chat with 1.5 Flash (Better Limits)
-  const chat = ai.chats.create({
-    model: 'gemini-1.5-flash', 
-    history: validHistory, 
-    config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
-    }
-  });
+    // 2. Call Groq API
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        messages: groqMessages,
+        model: "llama-3.3-70b-versatile", // Updated to latest stable model
+        temperature: 0.7,
+        max_tokens: 1024,
+      })
+    });
 
-  const retries = 3;
-  for (let i = 0; i < retries; i++) {
-    try {
-      const result = await chat.sendMessage({ message });
-      return result.text;
-    } catch (error: any) {
-      const isQuotaError = error?.message?.includes('429') || error?.status === 429 || error?.message?.includes('429');
-      
-      if (isQuotaError && i < retries - 1) {
-        const waitTime = 2000 * Math.pow(2, i); // 2s, 4s, 8s
-        console.warn(`Quota hit (Chat). Retrying in ${waitTime}ms...`);
-        await delay(waitTime);
-      } else {
-        console.error("Chat Error:", error);
-        if (i === retries - 1) {
-             return `Network error: ${error.message || "Unknown"}. System overloaded, try again in a minute.`;
-        }
-      }
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Groq API Error:", errorData);
+      throw new Error(errorData.error?.message || "Groq connection failed");
     }
+
+    const data = await response.json();
+    return data.choices[0]?.message?.content || "معلش سرحت منك، قول تاني؟";
+
+  } catch (error: any) {
+    console.error("Chat Error (Groq):", error);
+    return "الشبكة واقعة يا صاحبي. دقيقة وراجعلك.";
   }
-  return "System busy. Please try again later.";
 };
 
+// --- AUDIO FUNCTION (POWERED BY GOOGLE GEMINI) ---
 export const generateSpeech = async (text: string) => {
+  // Clean text of note commands before speaking
   const cleanText = text.replace(/\|\|SAVE_NOTE:.*?\|\|/g, '').trim();
   if (!cleanText) return null;
 
-  const retries = 3;
-  for (let i = 0; i < retries; i++) {
-    try {
-      // Must use gemini-2.0-flash for Audio generation
-      const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash", 
-        contents: [{ parts: [{ text: cleanText }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: TTSVoice.Fenrir },
-            },
+  try {
+    // We use Gemini 2.0 Flash specifically for its native audio generation capabilities
+    const response = await googleAi.models.generateContent({
+      model: "gemini-2.0-flash", 
+      contents: [{ parts: [{ text: cleanText }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: TTSVoice.Fenrir },
           },
         },
-      });
+      },
+    });
 
-      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (!base64Audio) throw new Error("No audio generated");
-      return base64Audio;
+    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!base64Audio) throw new Error("No audio generated");
+    return base64Audio;
 
-    } catch (error: any) {
-      const isQuotaError = error?.message?.includes('429') || error?.status === 429;
-      
-      if (isQuotaError && i < retries - 1) {
-        const waitTime = 2000 * Math.pow(2, i);
-        console.warn(`Quota hit (TTS). Retrying in ${waitTime}ms...`);
-        await delay(waitTime);
-      } else {
-        console.error("TTS Error:", error);
-        if (i === retries - 1) return null;
-      }
-    }
+  } catch (error) {
+    console.error("TTS Error (Gemini):", error);
+    return null; // Fail silently so chat continues even if voice breaks
   }
-  return null;
 };
 
+// --- IMAGE FUNCTION (POWERED BY GOOGLE IMAGEN) ---
 export const generateImage = async (prompt: string): Promise<string> => {
   try {
-    const response = await ai.models.generateImages({
+    const response = await googleAi.models.generateImages({
       model: 'imagen-3.0-generate-001',
       prompt: prompt,
       config: {
