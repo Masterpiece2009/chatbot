@@ -34,7 +34,7 @@ Response: "||SAVE_NOTE: Buy bread|| ماشي يا بطل، سجلتها. متن�
 
 export const sendMessage = async (message: string, history: {role: string, parts: {text: string}[]}[] = []) => {
   if (!process.env.API_KEY) {
-    return "Error: API Key is missing. Please add API_KEY to Vercel Environment Variables.";
+    return "Error: API Key is missing. Please add API_KEY to Vercel Environment Variables and REDEPLOY.";
   }
 
   try {
@@ -42,7 +42,8 @@ export const sendMessage = async (message: string, history: {role: string, parts
     const recentHistory = history.slice(-15);
 
     const chat = ai.chats.create({
-      model: 'gemini-3-flash-preview',
+      // Switched to 2.0 Flash Exp for better public availability
+      model: 'gemini-2.0-flash-exp',
       history: recentHistory, 
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -56,25 +57,25 @@ export const sendMessage = async (message: string, history: {role: string, parts
     if (error.status === 429 || error.message?.includes('429')) {
       return "Systems Overheating. اهدى شوية يا وحش.";
     }
-    return "Network glitch. (Check your Gemini API Key in Vercel settings)";
+    // More detailed error message for debugging
+    return `Network glitch (${error.status || 'Unknown'}). Check API Key or Model availability.`;
   }
 };
 
 export const generateSpeech = async (text: string) => {
   try {
-    // Strip out the hidden note command before speaking
     const cleanText = text.replace(/\|\|SAVE_NOTE:.*?\|\|/g, '').trim();
-
     if (!cleanText) return null;
 
+    // Using 2.0 Flash Exp for TTS as well
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
+      model: "gemini-2.0-flash-exp", 
       contents: [{ parts: [{ text: cleanText }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: TTSVoice.Fenrir }, // Deep Male voice
+            prebuiltVoiceConfig: { voiceName: TTSVoice.Fenrir },
           },
         },
       },
@@ -85,25 +86,29 @@ export const generateSpeech = async (text: string) => {
     return base64Audio;
   } catch (error) {
     console.error("TTS Error:", error);
-    throw error;
+    // Silent fail for voice to keep chat working
+    return null;
   }
 };
 
 export const generateImage = async (prompt: string): Promise<string> => {
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [{ text: prompt }],
-      },
+    // Using Imagen 3 for better compatibility
+    const response = await ai.models.generateImages({
+      model: 'imagen-3.0-generate-001',
+      prompt: prompt,
+      config: {
+        numberOfImages: 1,
+        aspectRatio: '1:1',
+      }
     });
 
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        const base64EncodeString = part.inlineData.data;
-        return `data:image/png;base64,${base64EncodeString}`;
-      }
+    // The SDK structure for generateImages is different than generateContent
+    const base64EncodeString = response.generatedImages?.[0]?.image?.imageBytes;
+    if (base64EncodeString) {
+      return `data:image/png;base64,${base64EncodeString}`;
     }
+    
     throw new Error("No image generated");
   } catch (error) {
     console.error("Image Gen Error:", error);
