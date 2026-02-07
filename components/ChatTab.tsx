@@ -1,27 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from '../types';
 import { sendMessage } from '../services/geminiService';
-import { Send, Loader2, Cpu, Download } from 'lucide-react';
+import { Send, Loader2, Disc, Camera } from 'lucide-react';
 
 interface ChatTabProps {
   onNoteDetected: (content: string) => void;
   userAvatar: string;
   botAvatar: string;
+  onUpdateUserAvatar: (url: string) => void;
 }
 
-export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, botAvatar }) => {
+export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, botAvatar, onUpdateUserAvatar }) => {
   const [messages, setMessages] = useState<Message[]>([
     { 
       id: '1', 
       role: 'model', 
-      text: 'الشارع هادي ولا فيه قلق؟ أنا صاحي ومتابعك. طمني.', 
+      text: 'إيه يا زميلي؟ مالك؟ شكلك مش مظبوط ليه كدا؟ حد رخم عليك في الكلام؟ حد ضايقك؟ بص في عيني وقولي.. متخبيش حاجة على أخوك. اركب، العربية جاهزة، ناخد لنا لفة على الكورنيش وتحكيلي كل اللي في قلبك. متقلقش من حاجة طول ما أنا بتنفس، أنا في ضهرك يا أخويا.', 
       timestamp: Date.now() 
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [installPrompt, setInstallPrompt] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -30,22 +31,6 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
-  useEffect(() => {
-    const handler = (e: any) => {
-      e.preventDefault();
-      setInstallPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
-  const handleInstallClick = () => {
-    if (installPrompt) {
-      installPrompt.prompt();
-      setInstallPrompt(null);
-    }
-  };
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -67,22 +52,19 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
         parts: [{ text: m.text }]
       }));
 
-      // Fallback to empty string if undefined to satisfy TS strict null checks
       let responseText = (await sendMessage(userMsg.text, history)) || "";
       
-      // Detect Note
       const noteRegex = /\|\|SAVE_NOTE:(.*?)\|\|/;
       const match = responseText.match(noteRegex);
       if (match && match[1]) {
         onNoteDetected(match[1].trim());
-        // Remove the technical note command from the visible chat
         responseText = responseText.replace(noteRegex, '').trim();
       }
 
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        text: responseText || "Processing error.",
+        text: responseText || "...",
         timestamp: Date.now()
       };
       setMessages(prev => [...prev, botMsg]);
@@ -90,7 +72,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        text: "معلش الشبكة فيها مشكلة. ثواني وهظبطها.",
+        text: "الشبكة واقعة. ثواني وهظبطها.",
         timestamp: Date.now()
       }]);
     } finally {
@@ -105,35 +87,59 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
     }
   };
 
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+          onUpdateUserAvatar(reader.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full">
-      {/* HUD Header */}
-      <div className="px-6 py-4 border-b border-primary-500/30 bg-[#020617]/80 backdrop-blur-md sticky top-0 z-10 flex justify-between items-center shadow-[0_5px_20px_rgba(0,0,0,0.5)]">
+    <div className="flex flex-col h-full font-sans">
+      {/* Hidden File Input */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileChange} 
+        accept="image/*" 
+        className="hidden" 
+      />
+
+      {/* Header */}
+      <div className="px-6 py-4 bg-background/90 backdrop-blur-md sticky top-0 z-10 flex justify-between items-center border-b border-white/5">
         <div className="flex items-center gap-3">
-          <Cpu className="animate-pulse text-primary-500" size={24}/> 
-          <h1 className="text-xl font-bold text-primary-400 tracking-widest font-mono drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">
-            منعم
-          </h1>
+          <div className="relative">
+             <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shadow-lg">
+                <img src={botAvatar} alt="Men3m" className="w-full h-full object-cover" />
+             </div>
+             <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-background"></div>
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-white tracking-wide">منعم</h1>
+            <p className="text-[10px] text-gray-400 tracking-wider uppercase">Online - 1970 Chevelle</p>
+          </div>
         </div>
         
-        {/* User Profile in Header */}
-        <div className="flex items-center gap-3">
-           {installPrompt && (
-              <button 
-                onClick={handleInstallClick}
-                className="p-2 bg-accent-500/20 text-accent-500 rounded-full animate-pulse mr-2"
-                title="Install App"
-              >
-                <Download size={18} />
-              </button>
-           )}
-           <div className="text-[10px] text-primary-500/70 font-mono tracking-widest text-right hidden sm:block">
-              PROJECT<br/>SHIELD
+        {/* User Profile - Clickable to Upload */}
+        <button 
+          onClick={handleAvatarClick}
+          className="relative group w-9 h-9 rounded-full overflow-hidden border-2 border-transparent hover:border-accent-500 transition-all cursor-pointer"
+        >
+           <img src={userAvatar} alt="User" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Camera size={14} className="text-white" />
            </div>
-           <div className="w-8 h-8 rounded-full border border-accent-500/50 shadow-[0_0_10px_rgba(245,158,11,0.3)] overflow-hidden">
-             <img src={userAvatar} alt="User" className="w-full h-full object-cover" />
-           </div>
-        </div>
+        </button>
       </div>
 
       {/* Messages */}
@@ -144,11 +150,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
             className={`flex items-end gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
           >
             {/* Avatar */}
-            <div className={`relative w-10 h-10 rounded-full flex-shrink-0 overflow-hidden ${
-              msg.role === 'user' 
-                ? 'border-2 border-accent-500 shadow-[0_0_15px_rgba(245,158,11,0.5)]' 
-                : 'border border-primary-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]'
-            }`}>
+            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 shadow-md">
               <img 
                 src={msg.role === 'user' ? userAvatar : botAvatar} 
                 alt={msg.role}
@@ -157,10 +159,10 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
             </div>
 
             {/* Bubble */}
-            <div className={`max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed border backdrop-blur-md shadow-lg ${
+            <div className={`max-w-[85%] px-5 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
               msg.role === 'user' 
-                ? 'bg-accent-500/10 border-accent-500/30 text-accent-50 rounded-br-none text-right' 
-                : 'bg-primary-950/40 border-primary-900 text-gray-200 rounded-bl-none font-mono text-right'
+                ? 'bg-accent-600 text-white rounded-br-sm' 
+                : 'bg-surface text-gray-100 rounded-bl-sm border border-white/5'
             }`} dir="auto">
               {msg.text}
             </div>
@@ -169,12 +171,11 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
         
         {isLoading && (
           <div className="flex items-end gap-3">
-             <div className="w-10 h-10 rounded-full border border-primary-500/30 overflow-hidden opacity-70">
-                <img src={botAvatar} alt="Bot" className="w-full h-full object-cover grayscale" />
+             <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 grayscale opacity-70">
+                <img src={botAvatar} alt="Bot" className="w-full h-full object-cover" />
              </div>
-            <div className="bg-primary-950/40 border border-primary-900 px-4 py-3 rounded-2xl rounded-bl-none flex items-center gap-2">
-              <span className="text-xs text-primary-500 font-mono">يفكر...</span>
-              <Loader2 size={14} className="animate-spin text-primary-500" />
+            <div className="bg-surface px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-2 border border-white/5">
+              <Loader2 size={14} className="animate-spin text-gray-400" />
             </div>
           </div>
         )}
@@ -182,23 +183,23 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-[#020617]/90 border-t border-primary-500/30 backdrop-blur-md sticky bottom-0 z-20">
-        <div className="flex items-center gap-2 bg-slate-900/50 rounded-xl border border-primary-500/30 px-4 py-3 focus-within:border-accent-500 focus-within:shadow-[0_0_15px_rgba(245,158,11,0.15)] transition-all">
+      <div className="p-4 bg-background/95 backdrop-blur-lg border-t border-white/5 sticky bottom-0 z-20">
+        <div className="flex items-center gap-3 bg-surface rounded-full px-4 py-3 border border-white/5 focus-within:border-accent-500/50 transition-colors shadow-lg">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder="اكتب رسالتك..."
-            className="flex-1 bg-transparent border-none outline-none text-white placeholder-primary-900 text-sm font-mono rtl:text-right text-right"
+            placeholder="اكتب رسالتك هنا..."
+            className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 text-sm rtl:text-right text-right font-medium"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className={`p-2 rounded-lg transition-all ${
+            className={`p-2 rounded-full transition-all ${
               input.trim() && !isLoading 
-                ? 'text-black bg-accent-500 hover:bg-accent-400 shadow-[0_0_10px_#f59e0b]' 
-                : 'text-primary-900 bg-primary-950/50'
+                ? 'bg-accent-500 text-white shadow-lg hover:bg-accent-600 hover:scale-105' 
+                : 'bg-white/5 text-gray-500'
             }`}
           >
             <Send size={18} />

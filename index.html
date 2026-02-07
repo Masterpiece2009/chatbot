@@ -7,10 +7,15 @@
     
     <!-- PWA Settings -->
     <link rel="manifest" href="./manifest.json" />
-    <meta name="theme-color" content="#020617">
+    <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f916.png">
+
+    <!-- Google Fonts: Cairo for Arabic/English Modern UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 
     <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,21 +25,23 @@
         theme: {
           extend: {
             colors: {
-              background: '#020617', // Slate 950
+              background: '#0f172a', // Slate 900
+              surface: '#1e293b',    // Slate 800
               primary: {
-                400: '#f87171', // Red 400
-                500: '#ef4444', // Red 500
-                900: '#7f1d1d', // Red 900
-                950: '#450a0a', // Red 950
+                400: '#94a3b8', // Slate 400
+                500: '#64748b', // Slate 500
+                600: '#475569', // Slate 600
+                900: '#0f172a', // Slate 900
               },
               accent: {
-                400: '#fbbf24', // Amber 400 (Gold)
+                400: '#fbbf24', // Amber 400 (The Car Headlights)
                 500: '#f59e0b', // Amber 500
+                600: '#d97706', // Amber 600
               }
             },
             fontFamily: {
+              sans: ['Cairo', 'system-ui', 'sans-serif'],
               mono: ['"Courier New"', 'Courier', 'monospace'],
-              sans: ['system-ui', 'sans-serif'],
             },
             animation: {
               'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -47,9 +54,15 @@
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       body {
-        background-color: #020617;
-        color: white;
+        background-color: #0f172a;
+        color: #f8fafc;
+        font-family: 'Cairo', sans-serif;
         overscroll-behavior-y: none;
+      }
+      /* Smooth font rendering */
+      * {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
     </style>
 <script type="importmap">

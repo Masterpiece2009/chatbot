@@ -9,27 +9,31 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.CHAT);
   const [notes, setNotes] = useState<Note[]>([]);
   
-  // -- IMAGES CONFIGURATION --
-  // Noir Night City Background (Matches Chevelle/Street vibe)
-  const BACKGROUND_URL = "https://images.unsplash.com/photo-1514316454349-750a7fd3da3a?q=80&w=2000&auto=format&fit=crop"; 
-  
-  // !!! IMPORTANT: REPLACE THESE URLS WITH THE LINKS TO YOUR UPLOADED IMAGES !!!
-  // USER AVATAR (Your photo in white shirt)
-  const USER_AVATAR_URL = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop"; 
-  
-  // BOT AVATAR (Men3em in leather jacket)
-  const BOT_AVATAR_URL = "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=200&auto=format&fit=crop"; 
+  // -- CONFIGURATION --
+  // New specific avatars from prompt
+  const DEFAULT_USER_AVATAR = "https://lh3.googleusercontent.com/gg-dl/AOI_d__60dHSJKTtd6JvFQ-iYkZhG7jSS8_4IyYqekqM8SFFkRooF2gG7Er10SNg8V6JYjd0lSZ6myyvV-mrO1dKeLZ4s3arV_0ndfSxLeAFmOhw_yL845RZS0mC45unsA9fAChhf-1l181gzjOH0hcZjDJXSCwpJX38YYIUThD1SqXTWFf1=s1024-rj";
+  const BOT_AVATAR_URL = "https://lh3.googleusercontent.com/gg-dl/AOI_d_9XHQSElitf2Coi4t3NYycwmo36PuVX-I2NrndhM5NohpKB43boiCupt14uxRZwjQ_hziRLmKKv0fG1FuG4AH4X2_0BkM3GuYTyrixRljuEhb7W4JL59F0Mtal_8d1Tkdp2La01O8tbzsuLhWBYViU-6Z_XIxHx_xZa4_pP5pCLWis0HQ=s1024-rj"; 
 
-  // Load Notes
+  const [userAvatar, setUserAvatar] = useState<string>(DEFAULT_USER_AVATAR);
+
+  // Load Data
   useEffect(() => {
-    const saved = localStorage.getItem('mn3em_notes');
-    if (saved) setNotes(JSON.parse(saved));
+    const savedNotes = localStorage.getItem('mn3em_notes');
+    if (savedNotes) setNotes(JSON.parse(savedNotes));
+
+    const savedAvatar = localStorage.getItem('mn3em_user_avatar');
+    if (savedAvatar) setUserAvatar(savedAvatar);
   }, []);
 
-  // Save Notes
+  // Save Data
   useEffect(() => {
     localStorage.setItem('mn3em_notes', JSON.stringify(notes));
   }, [notes]);
+
+  const updateUserAvatar = (url: string) => {
+    setUserAvatar(url);
+    localStorage.setItem('mn3em_user_avatar', url);
+  };
 
   const addNote = (content: string) => {
     const newNote: Note = {
@@ -45,66 +49,57 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="h-screen w-full flex flex-col bg-[#020617] text-white font-sans overflow-hidden relative selection:bg-red-500/30">
+    <div className="h-screen w-full flex flex-col bg-background text-white font-sans overflow-hidden relative selection:bg-accent-500/30">
       
-      {/* 1. Background Layer: Image */}
-      <div 
-        className="absolute inset-0 z-0 bg-cover bg-center opacity-30 mix-blend-overlay"
-        style={{ backgroundImage: `url(${BACKGROUND_URL})` }}
-      />
+      {/* 1. Background Layer: Subtle Gradient (Relaxing) */}
+      <div className="absolute inset-0 z-0 bg-gradient-to-b from-slate-900 to-[#020617]" />
       
-      {/* 2. Background Layer: Red Tech Grid */}
-      <div className="absolute inset-0 z-0 bg-[linear-gradient(rgba(239,68,68,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(239,68,68,0.05)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
-      
-      {/* 3. Background Layer: Vignette */}
-      <div className="absolute inset-0 z-0 bg-radial-gradient(circle at center, transparent 20%, #020617 100%) pointer-events-none" />
+      {/* 2. Ambient Glow (Soft) */}
+      <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] rounded-full bg-blue-900/10 blur-[100px] pointer-events-none"></div>
+      <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] rounded-full bg-amber-900/5 blur-[100px] pointer-events-none"></div>
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-hidden relative z-10 flex flex-col">
-        {/* Top Scanline Decoration */}
-        <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-red-500 to-transparent shadow-[0_0_15px_red]"></div>
-        
         <div className="flex-1 overflow-hidden relative backdrop-blur-[2px]">
-          {activeTab === Tab.CHAT && <ChatTab onNoteDetected={addNote} userAvatar={USER_AVATAR_URL} botAvatar={BOT_AVATAR_URL} />}
+          {activeTab === Tab.CHAT && (
+            <ChatTab 
+              onNoteDetected={addNote} 
+              userAvatar={userAvatar} 
+              botAvatar={BOT_AVATAR_URL} 
+              onUpdateUserAvatar={updateUserAvatar}
+            />
+          )}
           {activeTab === Tab.VOICE && <VoiceTab onNoteDetected={addNote} />}
           {activeTab === Tab.NOTES && <NotesTab notes={notes} onDelete={deleteNote} onAdd={addNote} />}
         </div>
       </main>
 
       {/* Bottom Navigation HUD */}
-      <nav className="h-24 bg-[#0f0404]/95 backdrop-blur-xl border-t border-red-900/50 flex items-center justify-between px-8 pb-6 z-40 relative shadow-[0_-5px_30px_rgba(220,38,38,0.15)]">
+      <nav className="h-20 bg-background/95 backdrop-blur-xl border-t border-white/5 flex items-center justify-between px-8 z-40 relative shadow-2xl">
         
         {/* Navigation Buttons Left */}
         <button
           onClick={() => setActiveTab(Tab.CHAT)}
           className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${
-            activeTab === Tab.CHAT ? 'text-accent-500 scale-110 drop-shadow-[0_0_8px_#f59e0b]' : 'text-red-900/60 hover:text-red-500'
+            activeTab === Tab.CHAT ? 'text-accent-500 scale-105' : 'text-slate-500 hover:text-slate-300'
           }`}
         >
-          <MessageCircle size={24} strokeWidth={activeTab === Tab.CHAT ? 2.5 : 2} />
-          <span className="text-[10px] font-mono tracking-widest uppercase">محادثة</span>
+          <MessageCircle size={22} strokeWidth={activeTab === Tab.CHAT ? 2.5 : 2} />
+          <span className="text-[9px] font-bold tracking-widest uppercase">Chat</span>
         </button>
 
-        {/* Center: Mn3em (Bot Identity) - Iron Man Arc Style */}
-        <div className="relative -top-8 group cursor-pointer" onClick={() => setActiveTab(Tab.CHAT)}>
-           {/* Rotating Outer Ring (Gold/Red) */}
-          <div className="absolute inset-[-6px] rounded-full border-2 border-red-500/30 border-t-accent-500 border-r-transparent animate-[spin_3s_linear_infinite]"></div>
-          <div className="absolute inset-[-6px] rounded-full border-2 border-red-500/10 border-b-red-500 border-l-transparent animate-[spin_5s_linear_infinite_reverse]"></div>
-          
-          {/* Static Glow */}
-          <div className="absolute inset-0 rounded-full bg-red-500 blur-lg opacity-20 group-hover:opacity-60 transition-opacity"></div>
-          
-          <div className="relative w-16 h-16 rounded-full p-[2px] bg-black border border-red-600 shadow-[0_0_20px_rgba(239,68,68,0.5)] overflow-hidden">
-             <img 
-               src={BOT_AVATAR_URL} 
-               alt="Mn3em" 
-               className="w-full h-full rounded-full object-cover"
-             />
-             <div className="absolute inset-0 bg-red-500/10 mix-blend-overlay"></div>
-          </div>
-          <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 w-32 text-center">
-            <span className="text-xl font-bold text-accent-500 drop-shadow-[0_0_3px_rgba(245,158,11,0.8)]">منعم</span>
-          </div>
+        {/* Center: Men3em Indicator */}
+        <div className="relative -top-6 group cursor-pointer" onClick={() => setActiveTab(Tab.CHAT)}>
+           {/* Glow Ring */}
+           <div className={`absolute inset-0 rounded-full blur-md transition-opacity duration-500 ${activeTab === Tab.CHAT ? 'bg-accent-500/40 opacity-100' : 'opacity-0'}`}></div>
+           
+           <div className={`relative w-14 h-14 rounded-full p-1 bg-background border-2 transition-all duration-300 shadow-xl overflow-hidden ${activeTab === Tab.CHAT ? 'border-accent-500 scale-110' : 'border-slate-700'}`}>
+              <img 
+                src={BOT_AVATAR_URL} 
+                alt="Men3em" 
+                className="w-full h-full rounded-full object-cover"
+              />
+           </div>
         </div>
 
         {/* Navigation Buttons Right */}
@@ -112,21 +107,21 @@ const App: React.FC = () => {
             <button
             onClick={() => setActiveTab(Tab.VOICE)}
             className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${
-                activeTab === Tab.VOICE ? 'text-accent-500 scale-110 drop-shadow-[0_0_8px_#f59e0b]' : 'text-red-900/60 hover:text-red-500'
+                activeTab === Tab.VOICE ? 'text-accent-500 scale-105' : 'text-slate-500 hover:text-slate-300'
             }`}
             >
-            <Mic size={24} strokeWidth={activeTab === Tab.VOICE ? 2.5 : 2} />
-            <span className="text-[10px] font-mono tracking-widest uppercase">تحدث</span>
+            <Mic size={22} strokeWidth={activeTab === Tab.VOICE ? 2.5 : 2} />
+            <span className="text-[9px] font-bold tracking-widest uppercase">Voice</span>
             </button>
 
             <button
             onClick={() => setActiveTab(Tab.NOTES)}
             className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${
-                activeTab === Tab.NOTES ? 'text-accent-500 scale-110 drop-shadow-[0_0_8px_#f59e0b]' : 'text-red-900/60 hover:text-red-500'
+                activeTab === Tab.NOTES ? 'text-accent-500 scale-105' : 'text-slate-500 hover:text-slate-300'
             }`}
             >
-            <Database size={24} strokeWidth={activeTab === Tab.NOTES ? 2.5 : 2} />
-            <span className="text-[10px] font-mono tracking-widest uppercase">ملاحظات</span>
+            <Database size={22} strokeWidth={activeTab === Tab.NOTES ? 2.5 : 2} />
+            <span className="text-[9px] font-bold tracking-widest uppercase">Notes</span>
             </button>
         </div>
       </nav>
