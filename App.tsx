@@ -10,8 +10,8 @@ const App: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   
   // -- IMAGES CONFIGURATION --
-  // Iron Man Dark/Red Background
-  const BACKGROUND_URL = "https://images.unsplash.com/photo-1635863138275-d9b33299680b?q=80&w=2000&auto=format&fit=crop"; 
+  // Noir Night City Background (Matches Chevelle/Street vibe)
+  const BACKGROUND_URL = "https://images.unsplash.com/photo-1514316454349-750a7fd3da3a?q=80&w=2000&auto=format&fit=crop"; 
   
   // !!! IMPORTANT: REPLACE THESE URLS WITH THE LINKS TO YOUR UPLOADED IMAGES !!!
   // USER AVATAR (Your photo in white shirt)

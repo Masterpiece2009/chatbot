@@ -14,7 +14,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
     { 
       id: '1', 
       role: 'model', 
-      text: 'إيه يا بطل؟ الدنيا عاملة إيه معاك النهاردة؟', 
+      text: 'الشارع هادي ولا فيه قلق؟ أنا صاحي ومتابعك. طمني.', 
       timestamp: Date.now() 
     }
   ]);
@@ -128,7 +128,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
               </button>
            )}
            <div className="text-[10px] text-primary-500/70 font-mono tracking-widest text-right hidden sm:block">
-              PROJECT<br/>IRON
+              PROJECT<br/>SHIELD
            </div>
            <div className="w-8 h-8 rounded-full border border-accent-500/50 shadow-[0_0_10px_rgba(245,158,11,0.3)] overflow-hidden">
              <img src={userAvatar} alt="User" className="w-full h-full object-cover" />
