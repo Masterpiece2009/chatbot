@@ -2,8 +2,8 @@ import { GoogleGenAI, Modality } from "@google/genai";
 import { TTSVoice } from "../types";
 
 // Initialize the client
-// NOTE: In a real environment, never expose your API key on the client side without restrictions.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+// The API key is injected at build time via vite.config.ts define
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const sendMessage = async (message: string, history: {role: string, parts: {text: string}[]}[] = []) => {
   try {
