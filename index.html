@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Gemini Pocket</title>
+    <title>منعم AI</title>
     
     <!-- PWA Settings -->
     <link rel="manifest" href="./manifest.json" />
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#020617">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f916.png">
 
-    <!-- Tailwind CDN (kept for styling simplicity) -->
+    <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -20,33 +20,32 @@
         theme: {
           extend: {
             colors: {
-              background: '#0f172a', // Slate 900
-              surface: '#1e293b',    // Slate 800
-              primary: '#3b82f6',    // Blue 500
-              secondary: '#64748b',  // Slate 500
-              accent: '#8b5cf6',     // Violet 500
+              background: '#020617', // Slate 950
+              cyan: {
+                400: '#22d3ee',
+                500: '#06b6d4',
+                900: '#164e63',
+                950: '#083344',
+              }
+            },
+            fontFamily: {
+              mono: ['"Courier New"', 'Courier', 'monospace'],
+              sans: ['system-ui', 'sans-serif'],
             },
             animation: {
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
             }
           },
         },
       }
     </script>
     <style>
-      /* Hide scrollbar for Chrome, Safari and Opera */
-      .no-scrollbar::-webkit-scrollbar {
-          display: none;
-      }
-      /* Hide scrollbar for IE, Edge and Firefox */
-      .no-scrollbar {
-          -ms-overflow-style: none;  /* IE and Edge */
-          scrollbar-width: none;  /* Firefox */
-      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       body {
-        background-color: #0f172a;
+        background-color: #020617;
         color: white;
-        overscroll-behavior-y: none; /* Prevent pull-to-refresh on mobile */
+        overscroll-behavior-y: none;
       }
     </style>
 <script type="importmap">
@@ -65,7 +64,6 @@
 </head>
   <body>
     <div id="root"></div>
-    <!-- Vite Entry Point -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>

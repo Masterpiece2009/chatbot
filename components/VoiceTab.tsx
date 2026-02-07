@@ -1,96 +1,93 @@
 import React, { useState } from 'react';
 import { generateSpeech } from '../services/geminiService';
 import { playRawAudio } from '../services/audioUtils';
-import { TTSVoice } from '../types';
-import { Mic, Volume2, Play, Loader2, StopCircle } from 'lucide-react';
+import { Mic, Activity, Loader2 } from 'lucide-react';
 
-export const VoiceTab: React.FC = () => {
+interface VoiceTabProps {
+  onNoteDetected: (content: string) => void;
+}
+
+export const VoiceTab: React.FC<VoiceTabProps> = ({ onNoteDetected }) => {
   const [text, setText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState<TTSVoice>(TTSVoice.Kore);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const handleSpeak = async () => {
     if (!text.trim() || isLoading) return;
 
     setIsLoading(true);
     try {
-      const base64Audio = await generateSpeech(text, selectedVoice);
-      await playRawAudio(base64Audio);
-      setIsPlaying(true);
-      // Reset playing state after a simple timeout assumption or user interaction
-      // In a robust app, we'd track the source's onended event
-      setTimeout(() => setIsPlaying(false), 5000); 
+      // Logic check for local note (simple version, fallback to AI logic handled in speech gen)
+      if (text.toLowerCase().startsWith('note this')) {
+         onNoteDetected(text.replace(/note this/i, '').trim());
+      }
+
+      const base64Audio = await generateSpeech(text);
+      if (base64Audio) {
+        setIsSpeaking(true);
+        await playRawAudio(base64Audio);
+        setTimeout(() => setIsSpeaking(false), 5000); // Approximate duration
+      }
+      setText('');
     } catch (error) {
-      alert("Failed to generate speech.");
+      alert("Voice module offline.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      <div className="px-6 py-4 border-b border-surface bg-background/80 backdrop-blur sticky top-0 z-10">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-green-400 to-teal-400 bg-clip-text text-transparent">
-          Voice Engine
-        </h1>
+    <div className="flex flex-col h-full items-center justify-center relative overflow-hidden">
+      
+      {/* Background Arc Lines */}
+      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
+         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] border border-cyan-500 rounded-full animate-pulse-slow"></div>
+         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] border border-cyan-500/50 rounded-full"></div>
       </div>
 
-      <div className="flex-1 p-6 space-y-6 overflow-y-auto no-scrollbar">
-        {/* Voice Selection */}
-        <div className="bg-surface rounded-2xl p-1 border border-white/5 flex flex-wrap gap-1">
-          {Object.values(TTSVoice).map((voice) => (
-            <button
-              key={voice}
-              onClick={() => setSelectedVoice(voice)}
-              className={`flex-1 min-w-[30%] py-2 px-3 rounded-xl text-sm font-medium transition-all ${
-                selectedVoice === voice
-                  ? 'bg-white text-black shadow-lg'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              {voice}
-            </button>
-          ))}
+      <div className="z-10 w-full px-8 flex flex-col items-center">
+        <h2 className="text-cyan-400 font-mono tracking-[0.2em] mb-8 text-sm">VOICE INTERFACE</h2>
+
+        {/* Arc Reactor / Mic Button */}
+        <div className="relative group">
+          <div className={`absolute inset-0 bg-cyan-500 rounded-full blur-xl opacity-20 transition-all duration-500 ${isSpeaking || isLoading ? 'scale-150 opacity-40' : ''}`}></div>
+          <button
+            onClick={handleSpeak}
+            disabled={!text.trim() || isLoading}
+            className={`relative w-40 h-40 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
+              isLoading 
+                ? 'border-orange-500 bg-black shadow-[0_0_30px_rgba(249,115,22,0.4)]'
+                : 'border-cyan-500 bg-black/80 shadow-[0_0_30px_rgba(6,182,212,0.4)] hover:shadow-[0_0_50px_rgba(6,182,212,0.6)]'
+            }`}
+          >
+            {/* Reactor Inner Detail */}
+            <div className="absolute inset-2 rounded-full border border-cyan-500/30"></div>
+            <div className="absolute inset-8 rounded-full border border-cyan-500/50"></div>
+            
+            {isLoading ? (
+               <Loader2 size={40} className="text-orange-500 animate-spin" />
+            ) : isSpeaking ? (
+               <Activity size={40} className="text-cyan-400 animate-pulse" />
+            ) : (
+               <Mic size={40} className="text-cyan-400 fill-current" />
+            )}
+          </button>
         </div>
 
-        {/* Text Input */}
-        <div className="relative">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Type something for me to say..."
-            className="w-full bg-surface border border-white/5 rounded-3xl p-6 text-lg text-white placeholder-gray-600 resize-none outline-none focus:border-green-500/50 transition-all h-64"
-          />
-          <div className="absolute bottom-4 right-4 text-xs text-gray-500">
-            {text.length} chars
-          </div>
+        {/* Text Input styled as terminal input */}
+        <div className="w-full mt-12 relative">
+            <div className="absolute inset-0 bg-cyan-500/5 skew-x-12 transform"></div>
+            <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Initialize voice command..."
+                className="w-full bg-black/40 border-l-2 border-r-2 border-cyan-500/50 p-4 text-center text-cyan-100 placeholder-cyan-800 outline-none font-mono h-24 resize-none backdrop-blur-sm relative z-10"
+            />
         </div>
-
-        {/* Action Button */}
-        <div className="flex justify-center">
-            <button
-                onClick={handleSpeak}
-                disabled={!text.trim() || isLoading}
-                className={`w-20 h-20 rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-95 ${
-                    isLoading 
-                    ? 'bg-surface border border-white/10' 
-                    : 'bg-gradient-to-br from-green-500 to-teal-600 hover:shadow-green-500/20'
-                }`}
-            >
-                {isLoading ? (
-                    <Loader2 size={32} className="text-gray-400 animate-spin" />
-                ) : (
-                    <Volume2 size={32} className="text-white fill-current" />
-                )}
-            </button>
-        </div>
-
-        <div className="text-center">
-            <p className="text-gray-500 text-sm">
-                {!text ? "Enter text above to start speaking" : isLoading ? "Synthesizing audio..." : "Tap to speak"}
-            </p>
-        </div>
+        
+        <p className="mt-4 text-[10px] text-cyan-700 font-mono uppercase">
+             {isLoading ? "Processing Neural Net..." : "System Ready"}
+        </p>
       </div>
     </div>
   );
