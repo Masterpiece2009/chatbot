@@ -8,9 +8,10 @@ interface ChatTabProps {
   userAvatar: string;
   botAvatar: string;
   onUpdateUserAvatar: (url: string) => void;
+  onUpdateBotAvatar: (url: string) => void;
 }
 
-export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, botAvatar, onUpdateUserAvatar }) => {
+export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, botAvatar, onUpdateUserAvatar, onUpdateBotAvatar }) => {
   const [messages, setMessages] = useState<Message[]>([
     { 
       id: '1', 
@@ -22,7 +23,9 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const userFileInputRef = useRef<HTMLInputElement>(null);
+  const botFileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -87,11 +90,12 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
     }
   };
 
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
+  // User Avatar Handlers
+  const handleUserAvatarClick = () => {
+    userFileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUserFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -104,36 +108,65 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
     }
   };
 
+  // Bot Avatar Handlers
+  const handleBotAvatarClick = () => {
+    botFileInputRef.current?.click();
+  };
+
+  const handleBotFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+          onUpdateBotAvatar(reader.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full font-sans">
-      {/* Hidden File Input */}
+    <div className="flex flex-col h-full font-sans relative">
+      {/* Hidden File Inputs */}
       <input 
         type="file" 
-        ref={fileInputRef} 
-        onChange={handleFileChange} 
+        ref={userFileInputRef} 
+        onChange={handleUserFileChange} 
+        accept="image/*" 
+        className="hidden" 
+      />
+      <input 
+        type="file" 
+        ref={botFileInputRef} 
+        onChange={handleBotFileChange} 
         accept="image/*" 
         className="hidden" 
       />
 
-      {/* Header */}
-      <div className="px-6 py-4 bg-background/90 backdrop-blur-md sticky top-0 z-10 flex justify-between items-center border-b border-white/5">
+      {/* Header - Transparent Glass */}
+      <div className="absolute top-0 left-0 right-0 px-6 py-4 bg-[#020617]/80 backdrop-blur-xl z-20 flex justify-between items-center border-b border-white/5 shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="relative">
-             <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shadow-lg">
-                <img src={botAvatar} alt="Men3m" className="w-full h-full object-cover" />
+          {/* Bot Avatar Clickable */}
+          <button onClick={handleBotAvatarClick} className="relative group cursor-pointer">
+             <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shadow-lg group-hover:border-accent-500 transition-colors">
+                <img src={botAvatar} alt="Men3em" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera size={14} className="text-white" />
+                </div>
              </div>
-             <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-background"></div>
-          </div>
+             <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-background animate-pulse"></div>
+          </button>
           <div>
-            <h1 className="text-lg font-bold text-white tracking-wide">منعم</h1>
-            <p className="text-[10px] text-gray-400 tracking-wider uppercase">Online - 1970 Chevelle</p>
+            <h1 className="text-lg font-bold text-white tracking-wide leading-none">منعم</h1>
+            <p className="text-[10px] text-accent-500 tracking-wider uppercase mt-1 font-bold">The Shield • Online</p>
           </div>
         </div>
         
-        {/* User Profile - Clickable to Upload */}
+        {/* User Profile Clickable */}
         <button 
-          onClick={handleAvatarClick}
-          className="relative group w-9 h-9 rounded-full overflow-hidden border-2 border-transparent hover:border-accent-500 transition-all cursor-pointer"
+          onClick={handleUserAvatarClick}
+          className="relative group w-9 h-9 rounded-full overflow-hidden border border-white/10 hover:border-accent-500 transition-all cursor-pointer shadow-lg"
         >
            <img src={userAvatar} alt="User" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
@@ -142,15 +175,15 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
         </button>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6 no-scrollbar">
+      {/* Messages - Added padding top to clear absolute header */}
+      <div className="flex-1 overflow-y-auto p-4 pt-24 space-y-6 no-scrollbar">
         {messages.map((msg) => (
           <div
             key={msg.id}
             className={`flex items-end gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
           >
             {/* Avatar */}
-            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 shadow-md">
+            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 shadow-md border border-white/5">
               <img 
                 src={msg.role === 'user' ? userAvatar : botAvatar} 
                 alt={msg.role}
@@ -159,10 +192,10 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
             </div>
 
             {/* Bubble */}
-            <div className={`max-w-[85%] px-5 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
+            <div className={`max-w-[85%] px-5 py-3.5 rounded-2xl text-[15px] leading-relaxed shadow-md ${
               msg.role === 'user' 
                 ? 'bg-accent-600 text-white rounded-br-sm' 
-                : 'bg-surface text-gray-100 rounded-bl-sm border border-white/5'
+                : 'bg-[#1e293b] text-gray-100 rounded-bl-sm border border-white/5'
             }`} dir="auto">
               {msg.text}
             </div>
@@ -171,38 +204,38 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
         
         {isLoading && (
           <div className="flex items-end gap-3">
-             <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 grayscale opacity-70">
+             <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 grayscale opacity-70 border border-white/5">
                 <img src={botAvatar} alt="Bot" className="w-full h-full object-cover" />
              </div>
-            <div className="bg-surface px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-2 border border-white/5">
-              <Loader2 size={14} className="animate-spin text-gray-400" />
+            <div className="bg-[#1e293b] px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-2 border border-white/5">
+              <Loader2 size={16} className="animate-spin text-accent-500" />
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} className="h-4" />
       </div>
 
       {/* Input Area */}
       <div className="p-4 bg-background/95 backdrop-blur-lg border-t border-white/5 sticky bottom-0 z-20">
-        <div className="flex items-center gap-3 bg-surface rounded-full px-4 py-3 border border-white/5 focus-within:border-accent-500/50 transition-colors shadow-lg">
+        <div className="flex items-center gap-3 bg-[#0f172a] rounded-2xl px-2 py-2 border border-white/5 focus-within:border-accent-500/50 transition-colors shadow-lg">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
             placeholder="اكتب رسالتك هنا..."
-            className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 text-sm rtl:text-right text-right font-medium"
+            className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 text-base rtl:text-right text-right font-medium px-2 py-1"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim() || isLoading}
-            className={`p-2 rounded-full transition-all ${
+            className={`p-3 rounded-xl transition-all ${
               input.trim() && !isLoading 
-                ? 'bg-accent-500 text-white shadow-lg hover:bg-accent-600 hover:scale-105' 
+                ? 'bg-accent-500 text-white shadow-lg hover:bg-accent-600 active:scale-95' 
                 : 'bg-white/5 text-gray-500'
             }`}
           >
-            <Send size={18} />
+            <Send size={20} />
           </button>
         </div>
       </div>

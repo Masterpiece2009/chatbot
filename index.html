@@ -2,12 +2,12 @@
 <html lang="ar" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Mn3em | منعم</title>
     
     <!-- PWA Settings -->
     <link rel="manifest" href="./manifest.json" />
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#020617">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f916.png">
@@ -25,18 +25,18 @@
         theme: {
           extend: {
             colors: {
-              background: '#0f172a', // Slate 900
-              surface: '#1e293b',    // Slate 800
+              background: '#020617', // Deep Slate/Black
+              surface: '#0f172a',    // Slate 900
               primary: {
-                400: '#94a3b8', // Slate 400
-                500: '#64748b', // Slate 500
-                600: '#475569', // Slate 600
-                900: '#0f172a', // Slate 900
+                400: '#94a3b8',
+                500: '#64748b',
+                600: '#475569',
+                900: '#0f172a',
               },
               accent: {
-                400: '#fbbf24', // Amber 400 (The Car Headlights)
-                500: '#f59e0b', // Amber 500
-                600: '#d97706', // Amber 600
+                400: '#fbbf24', // Amber
+                500: '#f59e0b',
+                600: '#d97706',
               }
             },
             fontFamily: {
@@ -45,6 +45,10 @@
             },
             animation: {
               'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            },
+            spacing: {
+              'safe-top': 'env(safe-area-inset-top)',
+              'safe-bottom': 'env(safe-area-inset-bottom)',
             }
           },
         },
@@ -54,15 +58,17 @@
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       body {
-        background-color: #0f172a;
+        background-color: #020617;
         color: #f8fafc;
         font-family: 'Cairo', sans-serif;
         overscroll-behavior-y: none;
+        -webkit-tap-highlight-color: transparent;
       }
       /* Smooth font rendering */
       * {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+        box-sizing: border-box;
       }
     </style>
 <script type="importmap">
