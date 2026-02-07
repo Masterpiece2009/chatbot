@@ -11,7 +11,9 @@ const App: React.FC = () => {
   
   // -- CONFIGURATION --
   const DEFAULT_USER_AVATAR = "https://lh3.googleusercontent.com/gg-dl/AOI_d__60dHSJKTtd6JvFQ-iYkZhG7jSS8_4IyYqekqM8SFFkRooF2gG7Er10SNg8V6JYjd0lSZ6myyvV-mrO1dKeLZ4s3arV_0ndfSxLeAFmOhw_yL845RZS0mC45unsA9fAChhf-1l181gzjOH0hcZjDJXSCwpJX38YYIUThD1SqXTWFf1=s1024-rj";
-  const DEFAULT_BOT_AVATAR = "https://lh3.googleusercontent.com/gg-dl/AOI_d_9XHQSElitf2Coi4t3NYycwmo36PuVX-I2NrndhM5NohpKB43boiCupt14uxRZwjQ_hziRLmKKv0fG1FuG4AH4X2_0BkM3GuYTyrixRljuEhb7W4JL59F0Mtal_8d1Tkdp2La01O8tbzsuLhWBYViU-6Z_XIxHx_xZa4_pP5pCLWis0HQ=s1024-rj"; 
+  
+  // Salah El-Hareef Avatar (Tough, Leather Jacket, Curly Hair vibe)
+  const DEFAULT_BOT_AVATAR = "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop"; 
 
   const [userAvatar, setUserAvatar] = useState<string>(DEFAULT_USER_AVATAR);
   const [botAvatar, setBotAvatar] = useState<string>(DEFAULT_BOT_AVATAR);
@@ -93,18 +95,18 @@ const App: React.FC = () => {
           <span className="text-[10px] font-bold tracking-widest uppercase">Chat</span>
         </button>
 
-        {/* Center: Men3em Indicator - Redesigned to fix overlap */}
+        {/* Center: Salah Indicator */}
         <div className="relative -top-8 group cursor-pointer flex flex-col items-center" onClick={() => setActiveTab(Tab.CHAT)}>
            <div className={`relative w-16 h-16 rounded-full p-1 bg-[#020617] border-2 transition-all duration-300 shadow-xl overflow-hidden z-20 ${activeTab === Tab.CHAT ? 'border-accent-500 scale-105 shadow-accent-500/20' : 'border-slate-700'}`}>
               <img 
                 src={botAvatar} 
-                alt="Men3em" 
+                alt="Salah" 
                 className="w-full h-full rounded-full object-cover"
               />
            </div>
            {/* Text Label Below Circle */}
            <span className={`text-[10px] font-bold uppercase tracking-widest mt-2 transition-colors ${activeTab === Tab.CHAT ? 'text-accent-500' : 'text-slate-600'}`}>
-             Men3em
+             Salah
            </span>
            
            {/* Glow Effect behind */}

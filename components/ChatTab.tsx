@@ -16,7 +16,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
     { 
       id: '1', 
       role: 'model', 
-      text: 'إيه يا زميلي؟ مالك؟ شكلك مش مظبوط ليه كدا؟ حد رخم عليك في الكلام؟ حد ضايقك؟ بص في عيني وقولي.. متخبيش حاجة على أخوك. اركب، العربية جاهزة، ناخد لنا لفة على الكورنيش وتحكيلي كل اللي في قلبك. متقلقش من حاجة طول ما أنا بتنفس، أنا في ضهرك يا أخويا.', 
+      text: 'الحياة زي الحلبة، مش مهم تضرب جامد.. المهم تستحمل الضرب وتفضل واقف. أنا معاك يا صاحبي، في ضهرك.. قوللي مالك؟', 
       timestamp: Date.now() 
     }
   ]);
@@ -150,7 +150,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
           {/* Bot Avatar Clickable */}
           <button onClick={handleBotAvatarClick} className="relative group cursor-pointer">
              <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shadow-lg group-hover:border-accent-500 transition-colors">
-                <img src={botAvatar} alt="Men3em" className="w-full h-full object-cover" />
+                <img src={botAvatar} alt="Salah" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <Camera size={14} className="text-white" />
                 </div>
@@ -158,8 +158,8 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-background animate-pulse"></div>
           </button>
           <div>
-            <h1 className="text-lg font-bold text-white tracking-wide leading-none">منعم</h1>
-            <p className="text-[10px] text-accent-500 tracking-wider uppercase mt-1 font-bold">The Shield • Online</p>
+            <h1 className="text-lg font-bold text-white tracking-wide leading-none">صلاح الحريف</h1>
+            <p className="text-[10px] text-accent-500 tracking-wider uppercase mt-1 font-bold">Bodyguard • Ex-Champ</p>
           </div>
         </div>
         
