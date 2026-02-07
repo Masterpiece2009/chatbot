@@ -13,7 +13,7 @@ export const transcribeAudio = async (audioBlob: Blob): Promise<string> => {
       method: 'POST',
       headers: {
         'Authorization': `Token ${DEEPGRAM_KEY}`,
-        'Content-Type': 'audio/wav', 
+        // Removed 'Content-Type': 'audio/wav' to let the browser set the correct type (e.g., audio/webm) from the Blob
       },
       body: audioBlob,
     });
