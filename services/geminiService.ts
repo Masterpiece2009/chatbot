@@ -6,6 +6,9 @@ const API_KEY = "AIzaSyBd8JBWfZsCAFajlMHS3kT2vsxGn4RrEWY";
 
 const ai = new GoogleGenAI({ apiKey: API_KEY });
 
+// Helper for delays
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 // System instruction to define Mn3em's personality and logic
 const SYSTEM_INSTRUCTION = `
 IDENTITY:
@@ -36,54 +39,83 @@ Response: "||SAVE_NOTE: Buy bread|| ماشي يا بطل، سجلتها. متن�
 `;
 
 export const sendMessage = async (message: string, history: {role: string, parts: {text: string}[]}[] = []) => {
-  try {
-    // FIX: Filter history to ensure it starts with a user turn.
-    const validHistory = history.filter((msg, index) => {
-      if (index === 0 && msg.role === 'model') return false;
-      return true;
-    });
+  // FIX: Filter history to ensure it starts with a user turn.
+  const validHistory = history.filter((msg, index) => {
+    if (index === 0 && msg.role === 'model') return false;
+    return true;
+  });
 
-    const chat = ai.chats.create({
-      model: 'gemini-2.0-flash', // Switched to 2.0 Flash (Stable)
-      history: validHistory, 
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
+  // Initialize Chat with 1.5 Flash (Better Limits)
+  const chat = ai.chats.create({
+    model: 'gemini-1.5-flash', 
+    history: validHistory, 
+    config: {
+      systemInstruction: SYSTEM_INSTRUCTION,
+    }
+  });
+
+  const retries = 3;
+  for (let i = 0; i < retries; i++) {
+    try {
+      const result = await chat.sendMessage({ message });
+      return result.text;
+    } catch (error: any) {
+      const isQuotaError = error?.message?.includes('429') || error?.status === 429 || error?.message?.includes('429');
+      
+      if (isQuotaError && i < retries - 1) {
+        const waitTime = 2000 * Math.pow(2, i); // 2s, 4s, 8s
+        console.warn(`Quota hit (Chat). Retrying in ${waitTime}ms...`);
+        await delay(waitTime);
+      } else {
+        console.error("Chat Error:", error);
+        if (i === retries - 1) {
+             return `Network error: ${error.message || "Unknown"}. System overloaded, try again in a minute.`;
+        }
       }
-    });
-
-    const result = await chat.sendMessage({ message });
-    return result.text;
-  } catch (error: any) {
-    console.error("Chat Error:", error);
-    return `Network error: ${error.message || "Unknown"}. Try refreshing the page.`;
+    }
   }
+  return "System busy. Please try again later.";
 };
 
 export const generateSpeech = async (text: string) => {
-  try {
-    const cleanText = text.replace(/\|\|SAVE_NOTE:.*?\|\|/g, '').trim();
-    if (!cleanText) return null;
+  const cleanText = text.replace(/\|\|SAVE_NOTE:.*?\|\|/g, '').trim();
+  if (!cleanText) return null;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash", // 2.0 Flash supports Audio generation
-      contents: [{ parts: [{ text: cleanText }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: TTSVoice.Fenrir },
+  const retries = 3;
+  for (let i = 0; i < retries; i++) {
+    try {
+      // Must use gemini-2.0-flash for Audio generation
+      const response = await ai.models.generateContent({
+        model: "gemini-2.0-flash", 
+        contents: [{ parts: [{ text: cleanText }] }],
+        config: {
+          responseModalities: [Modality.AUDIO],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: TTSVoice.Fenrir },
+            },
           },
         },
-      },
-    });
+      });
 
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) throw new Error("No audio generated");
-    return base64Audio;
-  } catch (error) {
-    console.error("TTS Error:", error);
-    return null;
+      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (!base64Audio) throw new Error("No audio generated");
+      return base64Audio;
+
+    } catch (error: any) {
+      const isQuotaError = error?.message?.includes('429') || error?.status === 429;
+      
+      if (isQuotaError && i < retries - 1) {
+        const waitTime = 2000 * Math.pow(2, i);
+        console.warn(`Quota hit (TTS). Retrying in ${waitTime}ms...`);
+        await delay(waitTime);
+      } else {
+        console.error("TTS Error:", error);
+        if (i === retries - 1) return null;
+      }
+    }
   }
+  return null;
 };
 
 export const generateImage = async (prompt: string): Promise<string> => {
