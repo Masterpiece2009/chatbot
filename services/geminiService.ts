@@ -92,21 +92,20 @@ export const generateSpeech = async (text: string) => {
   cleanText = cleanText.replace(/\(.*?\)/g, '').trim();
 
   // 3. Clean Emojis (So TTS doesn't read "Face with rolling eyes")
-  // Unicode ranges for emojis
   cleanText = cleanText.replace(/[\u{1F300}-\u{1F9FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
   
   if (!cleanText) return null;
 
   try {
-    // We use Gemini 2.0 Flash specifically for its native audio generation capabilities
+    // UPDATED MODEL: Using the recommended TTS model
     const response = await googleAi.models.generateContent({
-      model: "gemini-2.0-flash", 
+      model: "gemini-2.5-flash-preview-tts", 
       contents: [{ parts: [{ text: cleanText }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: TTSVoice.Kore }, // Female voice
+            prebuiltVoiceConfig: { voiceName: TTSVoice.Kore }, // 'Kore' is a Female voice
           },
         },
       },

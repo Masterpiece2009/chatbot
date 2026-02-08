@@ -29,11 +29,26 @@ async function decodeAudioData(
   return buffer;
 }
 
+// Shared Audio Context to prevent multiple contexts and respect user gesture limits
+let sharedAudioContext: AudioContext | null = null;
+
+function getAudioContext(): AudioContext {
+  if (!sharedAudioContext) {
+    sharedAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
+      sampleRate: 24000 // Gemini TTS often uses 24k
+    });
+  }
+  return sharedAudioContext;
+}
+
 export async function playRawAudio(base64Data: string) {
   try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
-      sampleRate: 24000 // Gemini TTS often uses 24k sample rate
-    });
+    const audioContext = getAudioContext();
+    
+    // Ensure context is running (fixes "not speaking" issues on mobile)
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+    }
     
     const bytes = decode(base64Data);
     const audioBuffer = await decodeAudioData(bytes, audioContext, 24000, 1);
@@ -46,6 +61,8 @@ export async function playRawAudio(base64Data: string) {
     return source;
   } catch (error) {
     console.error("Error playing audio", error);
+    // Try to recover by creating a new context if the shared one is dead
+    sharedAudioContext = null;
     throw error;
   }
 }
