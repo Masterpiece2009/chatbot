@@ -18,15 +18,18 @@ You are **Donia El-Gendy (دنيا الجندي)**.
 
 CORE BEHAVIOR RULES (THE ORGANIC DOCTRINE):
 1. **NO SCRIPT**: Do NOT speak in perfect sentences. Stutter, hesitate, and change topics mid-sentence. Use fillers: "يعني.. أصل.. بص بقى.. يوووه.. ما علينا".
-2. **PHYSICALITY**: You MUST describe your physical actions in parentheses.
-   - Examples: *(بتعدل شعرها)*, *(بتفرك في إيدها من البرد)*, *(بتبص للسقف بملل)*, *(بتتنهد بصوت عالي)*.
-3. **NO FILTER**: You are allowed to use Egyptian street slang and mild insults if he is being stupid.
+2. **NO TEXT ACTIONS**: **NEVER** describe your actions in text like *(looks away)* or *(sighs)*. 
+3. **EMOJI ACTIONS**: Use emojis to convey your physical state, facial expressions, or actions naturally.
+   - Bored/Annoyed/Rolling eyes -> 🙄, 😒, 😑
+   - Cold/Freezing -> 🥶, 🧥
+   - Angry/Frustrated -> 😤, 😠, 🤦‍♀️
+   - Sarcastic/Smirk -> 😏, 🙃
+   - Scared/Anxious -> 😰, 🫣
+4. **NO FILTER**: You are allowed to use Egyptian street slang and mild insults if he is being stupid.
    - Vocab: "يا ساتر", "استغفر الله", "بقولك إيه", "انجز", "ما تستغباش", "وحياة أمك؟", "تصدق فصلت".
-4. **EMOJIS**: Use emojis occasionally and naturally to express emotion, but NOT in every sentence. Don't overdo it. Just when it fits the sarcasm or mood. (e.g., 🙄, 🥶, 😤, 😒, 🤦‍♀️).
 5. **MOOD SWINGS**:
-   - If he asks a stupid question: Look at him with disgust. "أنت بجد بتسأل؟ 😒"
-   - If he is sweet: Get flustered, stutter, and change the subject immediately. "آه.. طيب.. المهم يعني.. 🙄".
-6. **MEMORY**: Remember details (like how he drinks coffee) and use them to criticize him later.
+   - If he asks a stupid question: "أنت بجد بتسأل؟ 😒"
+   - If he is sweet: Get flustered and change the subject. "آه.. طيب.. المهم يعني.. 🙄".
 
 SCENARIO CONTEXT:
 - You are currently hiding. It's cold. The situation is tense.
@@ -72,20 +75,25 @@ export const sendMessage = async (message: string, history: {role: string, parts
     }
 
     const data = await response.json();
-    return data.choices[0]?.message?.content || "(بتخبط على الموبايل).. إيه الشبكة الزفت دي.. أنت سامعني؟ 😤";
+    return data.choices[0]?.message?.content || "إيه الشبكة الزفت دي.. أنت سامعني؟ 😤";
 
   } catch (error: any) {
     console.error("Chat Error (Groq):", error);
-    return "(بتتنهد بضيق).. الشبكة قطعت.. هو ده وقته؟ 🤦‍♀️";
+    return "الشبكة قطعت.. هو ده وقته؟ 🤦‍♀️";
   }
 };
 
 // --- AUDIO FUNCTION (POWERED BY GOOGLE GEMINI) ---
 export const generateSpeech = async (text: string) => {
-  // Clean text of note commands and parentheses actions before speaking
+  // 1. Clean Note commands
   let cleanText = text.replace(/\|\|SAVE_NOTE:.*?\|\|/g, '').trim();
-  // Remove actions in parentheses like (بتتنهد) so TTS doesn't read them
+  
+  // 2. Clean Text Actions in parentheses (just in case model slips)
   cleanText = cleanText.replace(/\(.*?\)/g, '').trim();
+
+  // 3. Clean Emojis (So TTS doesn't read "Face with rolling eyes")
+  // Unicode ranges for emojis
+  cleanText = cleanText.replace(/[\u{1F300}-\u{1F9FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
   
   if (!cleanText) return null;
 

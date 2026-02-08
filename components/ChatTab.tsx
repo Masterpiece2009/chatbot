@@ -4,6 +4,8 @@ import { sendMessage } from '../services/geminiService';
 import { Send, Loader2, Camera } from 'lucide-react';
 
 interface ChatTabProps {
+  messages: Message[];
+  onAddMessage: (role: 'user' | 'model', text: string) => void;
   onNoteDetected: (content: string) => void;
   userAvatar: string;
   botAvatar: string;
@@ -11,15 +13,15 @@ interface ChatTabProps {
   onUpdateBotAvatar: (url: string) => void;
 }
 
-export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, botAvatar, onUpdateUserAvatar, onUpdateBotAvatar }) => {
-  const [messages, setMessages] = useState<Message[]>([
-    { 
-      id: '1', 
-      role: 'model', 
-      text: '(بتبص لك بطرف عينها وبتنفخ بضيق).. هو أنت هتفضل باصص في البتاع ده كتير؟ ما تقوم تشوفلنا صرفة.. ولا أنت خلاص استريحت للقعدة دي؟ 🙄 (بتفرك دراعها).. الجو بقى تلج، مش معاك جاكيت ولا أي حاجة نتدفى بيها بدل ما إحنا قاعدين زي اللاجئين كده؟ 🥶', 
-      timestamp: Date.now() 
-    }
-  ]);
+export const ChatTab: React.FC<ChatTabProps> = ({ 
+  messages, 
+  onAddMessage,
+  onNoteDetected, 
+  userAvatar, 
+  botAvatar, 
+  onUpdateUserAvatar, 
+  onUpdateBotAvatar 
+}) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -38,14 +40,9 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      text: input,
-      timestamp: Date.now()
-    };
-
-    setMessages(prev => [...prev, userMsg]);
+    // 1. Add User Message
+    onAddMessage('user', input);
+    const userInput = input; // capture for async usage
     setInput('');
     setIsLoading(true);
 
@@ -55,7 +52,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
         parts: [{ text: m.text }]
       }));
 
-      let responseText = (await sendMessage(userMsg.text, history)) || "";
+      let responseText = (await sendMessage(userInput, history)) || "";
       
       const noteRegex = /\|\|SAVE_NOTE:(.*?)\|\|/;
       const match = responseText.match(noteRegex);
@@ -64,20 +61,10 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
         responseText = responseText.replace(noteRegex, '').trim();
       }
 
-      const botMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        text: responseText || "...",
-        timestamp: Date.now()
-      };
-      setMessages(prev => [...prev, botMsg]);
+      // 2. Add Bot Message
+      onAddMessage('model', responseText || "...");
     } catch (error) {
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        text: "(بتخبط بإيدها ع الحيطة).. يوووه.. الشبكة زفت.. ما تشوف حل يا عبدالرحمن! 😤",
-        timestamp: Date.now()
-      }]);
+      onAddMessage('model', "الشبكة زفت.. ما تشوف حل يا عبدالرحمن! 😤");
     } finally {
       setIsLoading(false);
     }
