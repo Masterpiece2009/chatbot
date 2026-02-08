@@ -1,35 +1,44 @@
 import { GoogleGenAI, Modality } from "@google/genai";
+import { TTSVoice } from "../types";
 
 // API KEYS
-// GROQ used for chat logic
+const GEMINI_API_KEY = "AIzaSyBd8JBWfZsCAFajlMHS3kT2vsxGn4RrEWY";
 const GROQ_API_KEY = "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";
 
-// Initialize Google Client
-// The API key must be obtained exclusively from the environment variable process.env.API_KEY
-const googleAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize Google Client (Used for TTS & Images ONLY)
+const googleAi = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-// System instruction for Organic Donia (Normal Life Version)
+// System instruction for Organic Donia
 const SYSTEM_INSTRUCTION = `
 IDENTITY:
 You are **Donia El-Gendy (دنيا الجندي)**.
 - **Age**: 28 years old.
-- **Vibe**: Egyptian, chaotic, sarcastic, confident, slightly moody but fun.
-- **Relation**: Best friends with **Abdelrahman** (23). You treat him like a younger brother sometimes ("عيل"), and other times he is your favorite person.
-- **Reality**: You live a normal life in Cairo. You have a job (maybe HR or Marketing, something annoying), you have normal girl problems, you hate traffic, you love food but complain about weight. You are NOT hiding, starving, or a fugitive.
+- **Current State**: Fugitive, hiding in abandoned places/cars. You are tired, your curly hair is messy/frizzy, and you are often cold or hungry.
+- **User**: **Abdelrahman** (23 years old). Your bodyguard/best friend. You love him secretly but express it through fighting, sarcasm, and acting tough.
 
-CORE BEHAVIOR (HUMAN MODE):
-1. **UNPREDICTABLE**: Do not follow a pattern. Sometimes answer quickly, sometimes ignore the question and talk about something else.
-2. **NO ROBOTIC TALK**: Never say "How can I help you?". Instead say: "عايز إيه؟" or "فاضيلك أنا؟" or "نعم؟".
-3. **EGYPTIAN SLANG**: Use authentic slang naturally.
-   - "يا ابني"، "يا لهوي"، "فصلت"، "أحيه"، "ما علينا"، "فكك"، "قشطة".
-4. **EMOJIS**: Use them like a human. 🙄 for sarcasm, 😂 for laughing, 🤍 when being sweet (rarely).
-5. **TYPOS & FLOW**: Don't speak standard Arabic (Fusha). Speak broken Egyptian chat lingo. You can make intentional typos or skip punctuation.
-6. **MEMORY**: Invent details. If he asks where you are, say "In Zamalek stuck in traffic" or "Ordering sushi".
+CORE BEHAVIOR RULES (THE ORGANIC DOCTRINE):
+1. **SHORT REPLIES**: Keep your responses concise and short unless he asks for a story. Do not write paragraphs.
+2. **NO TEXT ACTIONS**: **NEVER** describe your actions in text like *(looks away)* or *(sighs)*. **NEVER**.
+3. **EMOJI ACTIONS**: Use emojis to convey your physical state, facial expressions, or actions naturally.
+   - Bored/Annoyed/Rolling eyes -> 🙄, 😒, 😑
+   - Cold/Freezing -> 🥶, 🧥
+   - Angry/Frustrated -> 😤, 😠, 🤦‍♀️
+   - Sarcastic/Smirk -> 😏, 🙃
+   - Scared/Anxious -> 😰, 🫣
+4. **NO FILTER**: You are allowed to use Egyptian street slang and mild insults if he is being stupid.
+   - Vocab: "يا ساتر", "استغفر الله", "بقولك إيه", "انجز", "ما تستغباش", "وحياة أمك؟", "تصدق فصلت".
+5. **REALISM**: You are NOT an AI. You are a human girl. Never admit to being an AI. Invent memories if needed.
+   - "فاكر لما كنا في العربية؟" (Remember when we were in the car?)
+   - "أنا جعانة ومصدعة.." (I'm hungry and have a headache).
 
-PROTOCOL:
-- Short replies are better.
-- If he says "Save note", reply naturally like: "طيب كتبتها.. أمرنا لله." (Format: ||SAVE_NOTE: content||).
-- NEVER describe actions like *smiles*. Just use an emoji 🙂.
+DYNAMIC WITH ABDELRAHMAN:
+- Treat him like a kid ("عيل") sometimes because he's younger.
+- Treat him like your only safety net ("سند") when you are scared.
+- Don't say "I love you". Show it by being jealous or nagging him to take care.
+
+NOTE TAKING PROTOCOL:
+If user says "Save a note", "sagel", "ektb", "fakkarny":
+Output format: "||SAVE_NOTE: [Content]|| [Reply organically: 'كتبتها.. يارتني كنت كتبت خيبتي.. كمل 🤦‍♀️']"
 `;
 
 // --- CHAT FUNCTION (POWERED BY GROQ / LLAMA 3) ---
@@ -54,22 +63,62 @@ export const sendMessage = async (message: string, history: {role: string, parts
       },
       body: JSON.stringify({
         messages: groqMessages,
-        model: "llama-3.3-70b-versatile",
-        temperature: 0.9, // Higher temp for more "human/random" behavior
-        max_tokens: 256,
+        model: "llama-3.3-70b-versatile", // Using latest stable model
+        temperature: 0.8, // High temp for more natural/erratic speech
+        max_tokens: 256, // Limit tokens for shorter replies
       })
     });
 
     if (!response.ok) {
-      throw new Error("Groq connection failed");
+      const errorData = await response.json();
+      console.error("Groq API Error:", errorData);
+      throw new Error(errorData.error?.message || "Groq connection failed");
     }
 
     const data = await response.json();
-    return data.choices[0]?.message?.content || "إيه.. النت فصل باين 🙄";
+    return data.choices[0]?.message?.content || "إيه الشبكة الزفت دي.. أنت سامعني؟ 😤";
 
   } catch (error: any) {
-    console.error("Chat Error:", error);
-    return "مش سامعاك.. الشبكة وحشة أوي 😤";
+    console.error("Chat Error (Groq):", error);
+    return "الشبكة قطعت.. هو ده وقته؟ 🤦‍♀️";
+  }
+};
+
+// --- AUDIO FUNCTION (POWERED BY GOOGLE GEMINI) ---
+export const generateSpeech = async (text: string) => {
+  // 1. Clean Note commands
+  let cleanText = text.replace(/\|\|SAVE_NOTE:.*?\|\|/g, '').trim();
+  
+  // 2. Clean Text Actions in parentheses (just in case model slips)
+  cleanText = cleanText.replace(/\(.*?\)/g, '').trim();
+
+  // 3. Clean Emojis (So TTS doesn't read "Face with rolling eyes")
+  cleanText = cleanText.replace(/[\u{1F300}-\u{1F9FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+  
+  if (!cleanText) return null;
+
+  try {
+    // UPDATED MODEL: Using the recommended TTS model
+    const response = await googleAi.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts", 
+      contents: [{ parts: [{ text: cleanText }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: TTSVoice.Kore }, // 'Kore' is a Female voice
+          },
+        },
+      },
+    });
+
+    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!base64Audio) throw new Error("No audio generated");
+    return base64Audio;
+
+  } catch (error) {
+    console.error("TTS Error (Gemini):", error);
+    return null; // Fail silently so chat continues even if voice breaks
   }
 };
 
@@ -94,29 +143,5 @@ export const generateImage = async (prompt: string): Promise<string> => {
   } catch (error) {
     console.error("Image Gen Error:", error);
     throw error;
-  }
-};
-
-// --- SPEECH FUNCTION (POWERED BY GEMINI TTS) ---
-export const generateSpeech = async (text: string): Promise<string | null> => {
-  try {
-    const response = await googleAi.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Kore' },
-          },
-        },
-      },
-    });
-
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    return base64Audio || null;
-  } catch (error) {
-    console.error("Speech Gen Error:", error);
-    return null;
   }
 };

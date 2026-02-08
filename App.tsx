@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Tab, Note, ChatSession, Message } from './types';
+import { Tab, Note, Message } from './types';
 import { ChatTab } from './components/ChatTab';
+import { VoiceTab } from './components/VoiceTab';
 import { NotesTab } from './components/NotesTab';
-import { MessageCircle, Database } from 'lucide-react';
+import { MessageCircle, Mic, Database } from 'lucide-react';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.CHAT);
@@ -15,9 +16,8 @@ const App: React.FC = () => {
   const [userAvatar, setUserAvatar] = useState<string>(DEFAULT_USER_AVATAR);
   const [botAvatar, setBotAvatar] = useState<string>(DEFAULT_BOT_AVATAR);
 
-  // -- SESSIONS STATE --
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string>("");
+  // -- MESSAGES STATE (SHARED & PERSISTENT) --
+  const [messages, setMessages] = useState<Message[]>([]);
 
   // Load Data
   useEffect(() => {
@@ -28,24 +28,16 @@ const App: React.FC = () => {
     // Load Avatars
     const savedUserAvatar = localStorage.getItem('mn3em_user_avatar');
     if (savedUserAvatar) setUserAvatar(savedUserAvatar);
+
     const savedBotAvatar = localStorage.getItem('mn3em_bot_avatar');
     if (savedBotAvatar) setBotAvatar(savedBotAvatar);
 
-    // Load Sessions
-    const savedSessions = localStorage.getItem('mn3em_sessions');
-    let loadedSessions: ChatSession[] = [];
-    
-    if (savedSessions) {
-      loadedSessions = JSON.parse(savedSessions);
-      setSessions(loadedSessions);
-    }
-
-    // Set active session or create new if none
-    const savedCurrentId = localStorage.getItem('mn3em_current_session_id');
-    if (savedCurrentId && loadedSessions.find(s => s.id === savedCurrentId)) {
-      setCurrentSessionId(savedCurrentId);
+    // Load Chat History
+    const savedMessages = localStorage.getItem('mn3em_messages');
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
     } else {
-      createNewSession(loadedSessions);
+      resetChat();
     }
   }, []);
 
@@ -55,79 +47,27 @@ const App: React.FC = () => {
   }, [notes]);
 
   useEffect(() => {
-    localStorage.setItem('mn3em_sessions', JSON.stringify(sessions));
-  }, [sessions]);
+    localStorage.setItem('mn3em_messages', JSON.stringify(messages));
+  }, [messages]);
 
-  useEffect(() => {
-    localStorage.setItem('mn3em_current_session_id', currentSessionId);
-  }, [currentSessionId]);
+  const updateUserAvatar = (url: string) => {
+    setUserAvatar(url);
+    localStorage.setItem('mn3em_user_avatar', url);
+  };
 
+  const updateBotAvatar = (url: string) => {
+    setBotAvatar(url);
+    localStorage.setItem('mn3em_bot_avatar', url);
+  };
 
-  // -- SESSION MANAGEMENT --
-  const createNewSession = (currentList = sessions) => {
-    const newSession: ChatSession = {
-      id: Date.now().toString(),
-      title: 'New Chat',
-      messages: [{ 
+  const resetChat = () => {
+     const initialMsg: Message = { 
         id: '1', 
         role: 'model', 
-        text: 'مالك يا ابني بتبصلي كده ليه؟ 🤨', 
+        text: 'بتفكري في إيه وأنتي ساكتة كده؟ شكلك مش عاجبني.. 🙄', 
         timestamp: Date.now() 
-      }],
-      lastModified: Date.now()
-    };
-    
-    const updatedSessions = [newSession, ...currentList];
-    setSessions(updatedSessions);
-    setCurrentSessionId(newSession.id);
-    return newSession.id;
-  };
-
-  const switchSession = (sessionId: string) => {
-    setCurrentSessionId(sessionId);
-  };
-
-  const deleteSession = (sessionId: string) => {
-    const updated = sessions.filter(s => s.id !== sessionId);
-    setSessions(updated);
-    if (currentSessionId === sessionId) {
-      if (updated.length > 0) {
-        setCurrentSessionId(updated[0].id);
-      } else {
-        createNewSession(updated);
-      }
-    }
-  };
-
-  // -- MESSAGE LOGIC --
-  const getCurrentMessages = () => {
-    const session = sessions.find(s => s.id === currentSessionId);
-    return session ? session.messages : [];
-  };
-
-  const addMessageToCurrent = (role: 'user' | 'model', text: string) => {
-    setSessions(prev => prev.map(session => {
-      if (session.id === currentSessionId) {
-        // Update title if it's the first user message
-        let newTitle = session.title;
-        if (session.messages.length <= 1 && role === 'user') {
-          newTitle = text.slice(0, 30) + (text.length > 30 ? '...' : '');
-        }
-        
-        return {
-          ...session,
-          title: newTitle,
-          lastModified: Date.now(),
-          messages: [...session.messages, {
-            id: Date.now().toString(),
-            role,
-            text,
-            timestamp: Date.now()
-          }]
-        };
-      }
-      return session;
-    }));
+      };
+      setMessages([initialMsg]);
   };
 
   const addNote = (content: string) => {
@@ -143,31 +83,47 @@ const App: React.FC = () => {
     setNotes(prev => prev.filter(n => n.id !== id));
   };
 
+  // Helper to add message from any tab
+  const addMessage = (role: 'user' | 'model', text: string) => {
+    const msg: Message = {
+      id: Date.now().toString(),
+      role,
+      text,
+      timestamp: Date.now()
+    };
+    setMessages(prev => [...prev, msg]);
+  };
+
   return (
     <div className="h-dvh w-full flex flex-col bg-[#0b141a] text-[#e9edef] font-sans overflow-hidden relative">
       
-      {/* Main Content Area */}
+      {/* 2. Main Content Area */}
       <main className="flex-1 overflow-hidden relative z-10 flex flex-col pt-safe-top">
         <div className="flex-1 overflow-hidden relative">
           {activeTab === Tab.CHAT && (
             <ChatTab 
-              messages={getCurrentMessages()}
-              sessions={sessions}
-              currentSessionId={currentSessionId}
-              onAddMessage={addMessageToCurrent}
+              messages={messages}
+              onAddMessage={addMessage}
               onNoteDetected={addNote}
-              onNewChat={() => createNewSession()}
-              onSwitchSession={switchSession}
-              onDeleteSession={deleteSession}
+              onClearChat={resetChat}
               userAvatar={userAvatar} 
               botAvatar={botAvatar} 
+              // Removed updateAvatar props for cleaner WhatsApp look, 
+              // assuming avatars are static or managed in settings later
+            />
+          )}
+          {activeTab === Tab.VOICE && (
+            <VoiceTab 
+              messages={messages} // Pass history for context
+              onAddMessage={addMessage} // Pass function to save voice interactions
+              onNoteDetected={addNote} 
             />
           )}
           {activeTab === Tab.NOTES && <NotesTab notes={notes} onDelete={deleteNote} onAdd={addNote} />}
         </div>
       </main>
 
-      {/* Bottom Navigation HUD - Simple 2 Tabs */}
+      {/* Bottom Navigation HUD - WhatsApp Style */}
       <nav className="h-[70px] pb-safe-bottom bg-[#202c33] border-t border-[#202c33] flex items-center justify-around px-2 z-40 relative">
         
         <button
@@ -178,6 +134,16 @@ const App: React.FC = () => {
         >
           <MessageCircle size={22} fill={activeTab === Tab.CHAT ? "currentColor" : "none"} />
           <span className="text-[12px] font-medium">Chats</span>
+        </button>
+
+        <button
+            onClick={() => setActiveTab(Tab.VOICE)}
+            className={`flex flex-col items-center justify-center space-y-1 w-20 py-2 rounded-xl transition-all ${
+                activeTab === Tab.VOICE ? 'bg-[#00a884]/10 text-[#00a884]' : 'text-[#8696a0]'
+            }`}
+        >
+            <Mic size={22} fill={activeTab === Tab.VOICE ? "currentColor" : "none"} />
+            <span className="text-[12px] font-medium">Call</span>
         </button>
 
         <button
