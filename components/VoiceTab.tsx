@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { sendMessage, generateSpeech } from '../services/geminiService';
 import { playRawAudio } from '../services/audioUtils';
 import { transcribeAudio } from '../services/deepgramService';
-import { Mic, Activity, Loader2, StopCircle } from 'lucide-react';
+import { Mic, Send, Loader2, StopCircle, Waves } from 'lucide-react';
 
 interface VoiceTabProps {
   onNoteDetected: (content: string) => void;
@@ -118,67 +118,77 @@ export const VoiceTab: React.FC<VoiceTabProps> = ({ onNoteDetected }) => {
   };
 
   return (
-    <div className="flex flex-col h-full items-center justify-center relative overflow-hidden bg-background">
+    <div className="flex flex-col h-full items-center justify-between p-6 bg-background relative overflow-hidden">
       
-      {/* Background Arc Lines */}
-      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
-         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] border border-primary-500 rounded-full animate-pulse-slow"></div>
-         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] border border-accent-500/30 rounded-full"></div>
+      {/* Visualizer Area */}
+      <div className="flex-1 w-full flex flex-col items-center justify-center relative">
+        {/* Simple Status Indicator */}
+        <div className={`transition-all duration-500 flex flex-col items-center gap-4 ${isSpeaking ? 'scale-110' : 'scale-100'}`}>
+          <div className={`w-32 h-32 rounded-full flex items-center justify-center transition-all duration-300 ${
+            isSpeaking 
+              ? 'bg-accent-500/20 shadow-[0_0_50px_rgba(217,70,239,0.3)] animate-pulse' 
+              : isRecording 
+                ? 'bg-red-500/20 shadow-[0_0_50px_rgba(239,68,68,0.3)]'
+                : 'bg-white/5'
+          }`}>
+             {isLoading ? (
+               <Loader2 size={48} className="text-accent-500 animate-spin" />
+             ) : isSpeaking ? (
+               <Waves size={48} className="text-accent-500 animate-bounce" />
+             ) : (
+               <div className="w-4 h-4 rounded-full bg-slate-500"></div>
+             )}
+          </div>
+          
+          <p className="text-slate-400 font-medium text-sm animate-pulse">
+            {isRecording ? "Listening..." : isSpeaking ? "Speaking..." : isLoading ? "Thinking..." : "Tap & Hold to speak"}
+          </p>
+        </div>
       </div>
 
-      <div className="z-10 w-full px-8 flex flex-col items-center">
-        <h2 className="text-primary-500 font-mono tracking-[0.2em] mb-8 text-sm uppercase">واجهة صوتية</h2>
+      {/* Controls Area */}
+      <div className="w-full flex flex-col items-center gap-6 pb-6">
+        
+        {/* Main Recording Button */}
+        <button
+          onMouseDown={startRecording}
+          onMouseUp={stopRecording}
+          onTouchStart={startRecording}
+          onTouchEnd={stopRecording}
+          disabled={isLoading || isSpeaking}
+          className={`relative w-20 h-20 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 shadow-lg ${
+            isRecording
+              ? 'bg-red-500 text-white scale-110 shadow-red-500/40'
+              : 'bg-accent-500 text-white hover:bg-accent-600 shadow-accent-500/30'
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          {isRecording ? (
+            <div className="w-8 h-8 bg-white rounded-md"></div>
+          ) : (
+            <Mic size={32} />
+          )}
+        </button>
 
-        {/* Arc Reactor / Mic Button */}
-        <div className="relative group select-none">
-          <div className={`absolute inset-0 bg-primary-500 rounded-full blur-xl opacity-20 transition-all duration-500 ${isSpeaking || isLoading || isRecording ? 'scale-150 opacity-40' : ''}`}></div>
-          <button
-            onMouseDown={startRecording}
-            onMouseUp={stopRecording}
-            onTouchStart={startRecording}
-            onTouchEnd={stopRecording}
-            disabled={isLoading || isSpeaking}
-            className={`relative w-40 h-40 rounded-full flex items-center justify-center border-4 transition-all duration-200 active:scale-95 ${
-              isRecording
-                ? 'border-red-500 bg-red-950/80 shadow-[0_0_50px_rgba(239,68,68,0.8)]'
-                : isLoading 
-                    ? 'border-accent-500 bg-black shadow-[0_0_30px_rgba(245,158,11,0.4)]'
-                    : 'border-primary-500 bg-black/80 shadow-[0_0_30px_rgba(239,68,68,0.4)] hover:shadow-[0_0_50px_rgba(239,68,68,0.6)]'
-            }`}
-          >
-            {/* Reactor Inner Detail */}
-            <div className={`absolute inset-2 rounded-full border transition-all ${isRecording ? 'border-red-400' : 'border-primary-500/30'}`}></div>
-            <div className="absolute inset-8 rounded-full border border-accent-500/50"></div>
-            
-            {isLoading ? (
-               <Loader2 size={40} className="text-accent-500 animate-spin" />
-            ) : isRecording ? (
-               <Mic size={50} className="text-red-500 animate-pulse fill-current" />
-            ) : isSpeaking ? (
-               <Activity size={40} className="text-accent-400 animate-pulse" />
-            ) : (
-               <Mic size={40} className="text-primary-400 fill-current" />
-            )}
-          </button>
+        {/* Text Fallback Input */}
+        <div className="w-full max-w-md bg-[#1e293b] rounded-full px-4 py-2 flex items-center gap-3 border border-white/5 shadow-md">
+           <input 
+             type="text"
+             value={text}
+             onChange={(e) => setText(e.target.value)}
+             onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleManualSend(); } }}
+             placeholder="Type a message..."
+             className="flex-1 bg-transparent border-none outline-none text-white text-sm text-right"
+             dir="auto"
+           />
+           <button 
+             onClick={handleManualSend} 
+             disabled={!text.trim() || isLoading}
+             className="w-8 h-8 rounded-full bg-slate-700 text-slate-300 flex items-center justify-center hover:bg-slate-600 transition-colors"
+           >
+             <Send size={14} />
+           </button>
         </div>
 
-        {/* Status Text */}
-        <p className={`mt-6 text-sm font-mono uppercase tracking-widest ${isRecording ? 'text-red-500 animate-pulse' : 'text-primary-700'}`}>
-             {isRecording ? "جاري الاستماع..." : isLoading ? "جاري التحليل..." : "اضغط وتحدث (HOLD TO SPEAK)"}
-        </p>
-
-        {/* Text Input styled as terminal input */}
-        <div className="w-full mt-8 relative">
-            <div className="absolute inset-0 bg-primary-900/10 skew-x-12 transform"></div>
-            <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleManualSend(); } }}
-                placeholder="... أو اكتب هنا"
-                className="w-full bg-black/40 border-l-2 border-r-2 border-primary-500/50 p-4 text-center text-white placeholder-primary-800 outline-none font-mono h-20 resize-none backdrop-blur-sm relative z-10"
-                dir="auto"
-            />
-        </div>
       </div>
     </div>
   );
