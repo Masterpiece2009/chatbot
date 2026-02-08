@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Message, ChatSession } from '../types';
+import { ChatSession } from '../types';
 import { sendMessage } from '../services/geminiService';
 import { Send, Image as ImageIcon, ArrowLeft, Phone, Video, Info } from 'lucide-react';
 
@@ -12,6 +12,7 @@ interface ChatTabProps {
   userAvatar: string;
   botAvatar: string;
   globalMemory: string; // Context passed to API
+  chatBackground: string | null;
 }
 
 export const ChatTab: React.FC<ChatTabProps> = ({ 
@@ -22,7 +23,8 @@ export const ChatTab: React.FC<ChatTabProps> = ({
   onBack,
   userAvatar, 
   botAvatar,
-  globalMemory
+  globalMemory,
+  chatBackground
 }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -88,7 +90,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({
     <div className="flex flex-col h-full bg-black text-white">
       
       {/* INSTAGRAM DM HEADER */}
-      <div className="h-[60px] flex items-center justify-between px-4 border-b border-[#262626]">
+      <div className="h-[60px] flex items-center justify-between px-4 border-b border-[#262626] z-10 bg-black">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="text-white">
              <ArrowLeft size={28} />
@@ -109,47 +111,68 @@ export const ChatTab: React.FC<ChatTabProps> = ({
       </div>
 
       {/* MESSAGES AREA */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
-        {/* Timestamp / Start of chat */}
-        <div className="text-center text-xs text-gray-500 my-4">
-           {new Date(session.lastModified).toLocaleDateString()} · {new Date(session.lastModified).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-        </div>
-
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            {/* Bot Avatar for received messages */}
-            {msg.role === 'model' && (
-               <img src={botAvatar} className="w-7 h-7 rounded-full object-cover mr-2 self-end mb-1" alt="Bot" />
-            )}
-
-            <div 
-              className={`max-w-[75%] px-4 py-3 text-[15px] leading-snug rounded-[22px] ${
-                msg.role === 'user' 
-                  ? 'bg-[#3797f0] text-white rounded-br-md' // Instagram Blue
-                  : 'bg-[#262626] text-white rounded-bl-md' // Dark Grey
-              }`}
-              dir="auto"
-            >
-              {msg.text}
-            </div>
-          </div>
-        ))}
-        {isLoading && (
-           <div className="flex justify-start">
-              <img src={botAvatar} className="w-7 h-7 rounded-full object-cover mr-2 self-end mb-1" alt="Bot" />
-              <div className="bg-[#262626] text-gray-400 px-4 py-3 rounded-[22px] rounded-bl-md text-sm">
-                 typing...
-              </div>
-           </div>
+      <div 
+        className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar relative"
+        style={{ 
+          backgroundColor: !chatBackground ? '#000' : 'transparent',
+        }}
+      >
+        {/* Background Layer */}
+        {chatBackground && (
+          <div 
+            className="absolute inset-0 z-0"
+            style={{
+              backgroundImage: chatBackground.startsWith('http') || chatBackground.startsWith('data:') ? `url(${chatBackground})` : undefined,
+              backgroundColor: !chatBackground.startsWith('http') && !chatBackground.startsWith('data:') ? chatBackground : undefined,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              opacity: 0.6 // Slight dim so text is readable
+            }}
+          />
         )}
-        <div ref={messagesEndRef} />
+
+        {/* Content Layer */}
+        <div className="relative z-10">
+          <div className="text-center text-xs text-gray-500 my-4 shadow-black drop-shadow-md">
+             {new Date(session.lastModified).toLocaleDateString()} · {new Date(session.lastModified).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+          </div>
+
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex w-full mb-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {/* Bot Avatar for received messages */}
+              {msg.role === 'model' && (
+                 <img src={botAvatar} className="w-7 h-7 rounded-full object-cover mr-2 self-end mb-1 border border-white/10" alt="Bot" />
+              )}
+
+              <div 
+                className={`max-w-[75%] px-4 py-3 text-[15px] leading-snug rounded-[22px] shadow-sm backdrop-blur-sm ${
+                  msg.role === 'user' 
+                    ? 'bg-[#3797f0] text-white rounded-br-md' // Instagram Blue
+                    : 'bg-[#262626]/90 text-white rounded-bl-md border border-white/5' // Dark Grey with opacity
+                }`}
+                dir="auto"
+              >
+                {msg.text}
+              </div>
+            </div>
+          ))}
+          {isLoading && (
+             <div className="flex justify-start mb-4">
+                <img src={botAvatar} className="w-7 h-7 rounded-full object-cover mr-2 self-end mb-1" alt="Bot" />
+                <div className="bg-[#262626] text-gray-400 px-4 py-3 rounded-[22px] rounded-bl-md text-sm">
+                   typing...
+                </div>
+             </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* INSTAGRAM INPUT AREA */}
-      <div className="p-4 flex items-center gap-3 bg-black">
+      <div className="p-4 flex items-center gap-3 bg-black z-10 border-t border-[#262626]">
          <div className="w-9 h-9 bg-[#262626] rounded-full flex items-center justify-center text-[#3797f0]">
             <ImageIcon size={20} />
          </div>

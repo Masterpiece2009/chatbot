@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { Note } from '../types';
-import { Trash2, Plus, Bookmark, Camera } from 'lucide-react';
+import { Trash2, Plus, Bookmark, Camera, Wallpaper, Check } from 'lucide-react';
 
 interface NotesTabProps {
   notes: Note[];
@@ -10,15 +10,19 @@ interface NotesTabProps {
   botAvatar: string;
   onUpdateUserAvatar: (url: string) => void;
   onUpdateBotAvatar: (url: string) => void;
+  chatBackground: string | null;
+  onUpdateChatBackground: (bg: string | null) => void;
 }
 
 export const NotesTab: React.FC<NotesTabProps> = ({ 
   notes, onDelete, onAdd,
-  userAvatar, botAvatar, onUpdateUserAvatar, onUpdateBotAvatar
+  userAvatar, botAvatar, onUpdateUserAvatar, onUpdateBotAvatar,
+  chatBackground, onUpdateChatBackground
 }) => {
   const [newNote, setNewNote] = React.useState('');
   const userFileInputRef = useRef<HTMLInputElement>(null);
   const botFileInputRef = useRef<HTMLInputElement>(null);
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAdd = () => {
     if (newNote.trim()) {
@@ -27,7 +31,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({
     }
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, isBot: boolean) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, type: 'user' | 'bot' | 'bg') => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -37,8 +41,10 @@ export const NotesTab: React.FC<NotesTabProps> = ({
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           
-          // Compress for avatar (smaller size)
-          const MAX_SIZE = 400;
+          // Compress settings
+          const MAX_SIZE = type === 'bg' ? 1200 : 400; // Larger for backgrounds
+          const QUALITY = type === 'bg' ? 0.8 : 0.7;
+          
           let width = img.width;
           let height = img.height;
 
@@ -58,11 +64,11 @@ export const NotesTab: React.FC<NotesTabProps> = ({
           canvas.height = height;
           ctx?.drawImage(img, 0, 0, width, height);
           
-          // JPEG 0.7 quality
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
           
-          if (isBot) onUpdateBotAvatar(dataUrl);
-          else onUpdateUserAvatar(dataUrl);
+          if (type === 'bot') onUpdateBotAvatar(dataUrl);
+          else if (type === 'user') onUpdateUserAvatar(dataUrl);
+          else if (type === 'bg') onUpdateChatBackground(dataUrl);
         };
         img.src = e.target?.result as string;
       };
@@ -70,19 +76,26 @@ export const NotesTab: React.FC<NotesTabProps> = ({
     }
   };
 
+  const colors = [
+    { name: 'Default', value: null },
+    { name: 'Midnight', value: '#1e1b4b' }, // indigo-950
+    { name: 'Plum', value: '#4a044e' }, // fuchsia-950
+    { name: 'Forest', value: '#052e16' }, // green-950
+  ];
+
   return (
     <div className="flex flex-col h-full bg-black text-white">
       {/* Header */}
       <div className="h-[60px] flex items-center justify-center border-b border-[#262626]">
         <h1 className="font-bold text-lg flex items-center gap-2">
-          Profile & Memories <Bookmark size={18} />
+          Profile & Settings <Bookmark size={18} />
         </h1>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar p-1">
         
-        {/* PROFILE SETTINGS SECTION */}
-        <div className="p-6 mb-4 border-b border-[#262626]">
+        {/* IDENTITY SETUP */}
+        <div className="p-6 mb-2 border-b border-[#262626]">
           <h2 className="text-xs font-bold text-gray-500 mb-4 uppercase tracking-widest text-center">Identity Setup</h2>
           <div className="flex justify-center gap-12 items-center">
             
@@ -103,7 +116,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({
                  ref={userFileInputRef} 
                  className="hidden" 
                  accept="image/*" 
-                 onChange={(e) => handleFileSelect(e, false)} 
+                 onChange={(e) => handleFileSelect(e, 'user')} 
                />
             </div>
 
@@ -126,11 +139,54 @@ export const NotesTab: React.FC<NotesTabProps> = ({
                  ref={botFileInputRef} 
                  className="hidden" 
                  accept="image/*" 
-                 onChange={(e) => handleFileSelect(e, true)} 
+                 onChange={(e) => handleFileSelect(e, 'bot')} 
                />
             </div>
 
           </div>
+        </div>
+
+        {/* CHAT WALLPAPER SECTION */}
+        <div className="p-6 mb-2 border-b border-[#262626]">
+          <h2 className="text-xs font-bold text-gray-500 mb-4 uppercase tracking-widest text-center flex items-center justify-center gap-2">
+            <Wallpaper size={14} /> Chat Wallpaper
+          </h2>
+          
+          <div className="flex items-center justify-center gap-4 mb-4">
+             {colors.map((c) => (
+               <button
+                 key={c.name}
+                 onClick={() => onUpdateChatBackground(c.value)}
+                 className={`w-10 h-10 rounded-full border-2 flex items-center justify-center ${
+                   (chatBackground === c.value) ? 'border-white' : 'border-transparent'
+                 }`}
+                 style={{ backgroundColor: c.value || '#000' }}
+                 title={c.name}
+               >
+                 {(chatBackground === c.value) && <Check size={16} className="text-white" />}
+               </button>
+             ))}
+             
+             {/* Upload BG */}
+             <button
+               onClick={() => bgFileInputRef.current?.click()}
+               className={`w-10 h-10 rounded-full border-2 border-[#3797f0] flex items-center justify-center bg-[#121212] overflow-hidden relative`}
+             >
+                {chatBackground && chatBackground.length > 50 ? (
+                  <img src={chatBackground} className="w-full h-full object-cover opacity-60" />
+                ) : (
+                  <Wallpaper size={18} className="text-[#3797f0]" />
+                )}
+             </button>
+             <input 
+                 type="file" 
+                 ref={bgFileInputRef} 
+                 className="hidden" 
+                 accept="image/*" 
+                 onChange={(e) => handleFileSelect(e, 'bg')} 
+             />
+          </div>
+          <p className="text-[10px] text-gray-500 text-center">Select a color or tap the image icon to upload from gallery.</p>
         </div>
 
         {/* Add Note Section */}
@@ -155,7 +211,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({
 
         {/* Notes Grid */}
         {notes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-gray-500 gap-4">
+          <div className="flex flex-col items-center justify-center py-6 text-gray-500 gap-4">
             <p className="text-xs text-center max-w-[200px] text-gray-600">No written memories yet.</p>
           </div>
         ) : (

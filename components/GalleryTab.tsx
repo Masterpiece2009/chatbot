@@ -14,7 +14,10 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({ items, onAdd, onDelete }
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Compress image logic
+      // Prompt for caption before processing
+      const userCaption = window.prompt("Write a caption for this memory:", "Shared Moment");
+      if (userCaption === null) return; // Cancelled
+
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
@@ -44,9 +47,9 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({ items, onAdd, onDelete }
           canvas.height = height;
           ctx?.drawImage(img, 0, 0, width, height);
           
-          // Convert to JPEG with quality 0.6 to save space
+          // Convert to JPEG
           const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
-          onAdd(dataUrl, "New Memory");
+          onAdd(dataUrl, userCaption || "Shared Memory");
         };
         img.src = e.target?.result as string;
       };
@@ -84,14 +87,18 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({ items, onAdd, onDelete }
              <p>No photos yet. Add some memories!</p>
            </div>
         ) : (
-          <div className="grid grid-cols-3 gap-0.5">
+          <div className="grid grid-cols-2 gap-1">
             {items.map((item) => (
-              <div key={item.id} className="relative aspect-square group bg-[#121212]">
+              <div key={item.id} className="relative aspect-auto group bg-[#121212] overflow-hidden mb-1">
                 <img 
                   src={item.url} 
-                  className="w-full h-full object-cover" 
-                  alt="Memory" 
+                  className="w-full h-auto object-cover max-h-96" 
+                  alt={item.caption} 
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-2 opacity-100">
+                    <p className="text-white text-xs font-semibold drop-shadow-md">{item.caption}</p>
+                    <span className="text-[10px] text-gray-300">{new Date(item.timestamp).toLocaleDateString()}</span>
+                </div>
                 <button 
                   onClick={() => onDelete(item.id)}
                   className="absolute top-1 right-1 bg-black/50 p-1 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
