@@ -1,7 +1,8 @@
 export enum Tab {
   CHAT = 'chat', // The DM List view
-  NOTES = 'notes', // The Profile/Saved view
-  ACTIVE_CHAT = 'active_chat' // The actual chat interface
+  ACTIVE_CHAT = 'active_chat', // The actual chat interface
+  GALLERY = 'gallery', // The shared photo album
+  PROFILE = 'profile' // Settings/Profile
 }
 
 export interface Message {
@@ -13,7 +14,7 @@ export interface Message {
 
 export interface ChatSession {
   id: string;
-  title: string; // Auto-generated from first message
+  title: string;
   messages: Message[];
   lastModified: number;
 }
@@ -21,6 +22,13 @@ export interface ChatSession {
 export interface Note {
   id: string;
   content: string;
+  timestamp: number;
+}
+
+export interface GalleryItem {
+  id: string;
+  url: string; // Base64
+  caption: string;
   timestamp: number;
 }
 
