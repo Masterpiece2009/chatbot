@@ -1,34 +1,38 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Message } from '../types';
+import { Message, ChatSession } from '../types';
 import { sendMessage } from '../services/geminiService';
-import { transcribeAudio } from '../services/deepgramService';
-import { Send, Mic, MoreVertical, Phone, Video, Image as ImageIcon, Smile, Paperclip, Check, CheckCheck, Trash2 } from 'lucide-react';
+import { Send, Menu, Phone, Video, Image as ImageIcon, Smile, Paperclip, CheckCheck, Plus, X, MessageSquare, Trash2 } from 'lucide-react';
 
 interface ChatTabProps {
   messages: Message[];
+  sessions: ChatSession[];
+  currentSessionId: string;
   onAddMessage: (role: 'user' | 'model', text: string) => void;
   onNoteDetected: (content: string) => void;
-  onClearChat: () => void;
+  onNewChat: () => void;
+  onSwitchSession: (id: string) => void;
+  onDeleteSession: (id: string) => void;
   userAvatar: string;
   botAvatar: string;
 }
 
 export const ChatTab: React.FC<ChatTabProps> = ({ 
   messages, 
+  sessions,
+  currentSessionId,
   onAddMessage,
   onNoteDetected,
-  onClearChat,
+  onNewChat,
+  onSwitchSession,
+  onDeleteSession,
   userAvatar, 
   botAvatar, 
 }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,7 +67,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({
 
       onAddMessage('model', responseText || "...");
     } catch (error) {
-      onAddMessage('model', "الشبكة زفت.. مش سامعة 😤");
+      onAddMessage('model', "النت وحش أوي.. 😑");
     } finally {
       setIsLoading(false);
     }
@@ -76,57 +80,68 @@ export const ChatTab: React.FC<ChatTabProps> = ({
     }
   };
 
-  // --- RECORDING LOGIC (Chat Mic) ---
-  const toggleRecording = async () => {
-    if (isRecording) {
-      // STOP RECORDING
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
-        setIsRecording(false);
-      }
-    } else {
-      // START RECORDING
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mediaRecorder = new MediaRecorder(stream);
-        mediaRecorderRef.current = mediaRecorder;
-        audioChunksRef.current = [];
-
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) audioChunksRef.current.push(event.data);
-        };
-
-        mediaRecorder.onstop = async () => {
-          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-          setIsLoading(true);
-          try {
-            const transcript = await transcribeAudio(audioBlob);
-            if (transcript.trim()) {
-              handleSend(transcript);
-            }
-          } catch (e) {
-            console.error(e);
-          } finally {
-            setIsLoading(false);
-          }
-          stream.getTracks().forEach(track => track.stop());
-        };
-
-        mediaRecorder.start();
-        setIsRecording(true);
-      } catch (error) {
-        alert("Microphone access denied");
-      }
-    }
-  };
-
   // --- FORMATTING ---
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString();
+  };
+
   return (
-    <div className="flex flex-col h-full relative bg-[#0b141a]">
+    <div className="flex flex-col h-full relative bg-[#0b141a] overflow-hidden">
+      
+      {/* --- SIDEBAR (HISTORY) --- */}
+      <div className={`absolute inset-y-0 left-0 w-64 bg-[#111b21] z-50 transform transition-transform duration-300 ease-in-out border-r border-[#202c33] ${showSidebar ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-4 bg-[#202c33] h-[60px] flex items-center justify-between shadow-sm">
+           <h2 className="font-bold text-gray-200">Chats</h2>
+           <button onClick={() => setShowSidebar(false)}><X className="text-gray-400" size={24} /></button>
+        </div>
+        
+        <div className="p-3">
+          <button 
+            onClick={() => { onNewChat(); setShowSidebar(false); }}
+            className="w-full bg-[#00a884] text-white rounded-lg py-2 flex items-center justify-center gap-2 font-medium shadow-md active:scale-95 transition-transform"
+          >
+            <Plus size={20} /> New Chat
+          </button>
+        </div>
+
+        <div className="overflow-y-auto h-[calc(100%-120px)]">
+           {sessions.map(session => (
+             <div 
+                key={session.id}
+                onClick={() => { onSwitchSession(session.id); setShowSidebar(false); }}
+                className={`flex items-center justify-between p-3 border-b border-[#202c33] cursor-pointer hover:bg-[#202c33] ${currentSessionId === session.id ? 'bg-[#2a3942]' : ''}`}
+             >
+                <div className="flex flex-col flex-1 min-w-0 mr-2">
+                   <h3 className="text-gray-200 text-sm font-medium truncate" dir="auto">
+                     {session.title || 'New Chat'}
+                   </h3>
+                   <span className="text-gray-500 text-xs">
+                     {formatDate(session.lastModified)}
+                   </span>
+                </div>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onDeleteSession(session.id); }}
+                  className="text-gray-500 hover:text-red-400 p-1"
+                >
+                  <Trash2 size={16} />
+                </button>
+             </div>
+           ))}
+        </div>
+      </div>
+
+      {/* OVERLAY FOR SIDEBAR */}
+      {showSidebar && (
+        <div className="absolute inset-0 bg-black/50 z-40" onClick={() => setShowSidebar(false)} />
+      )}
+
+
+      {/* --- MAIN CHAT UI --- */}
+      
       {/* BACKGROUND PATTERN */}
       <div className="absolute inset-0 opacity-[0.06] pointer-events-none z-0" 
            style={{ backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")' }}>
@@ -135,8 +150,9 @@ export const ChatTab: React.FC<ChatTabProps> = ({
       {/* WHATSAPP HEADER */}
       <div className="bg-[#202c33] px-2 py-2 flex items-center justify-between z-20 shadow-sm border-b border-[#202c33]">
         <div className="flex items-center gap-3">
-           {/* Back Arrow (Simulated) */}
-           {/* <ArrowLeft className="text-gray-300" size={24} /> */}
+           <button onClick={() => setShowSidebar(true)} className="p-1">
+              <Menu className="text-gray-300" size={24} />
+           </button>
            
            <div className="relative">
              <img src={botAvatar} alt="Donia" className="w-10 h-10 rounded-full object-cover" />
@@ -152,21 +168,8 @@ export const ChatTab: React.FC<ChatTabProps> = ({
         </div>
 
         <div className="flex items-center gap-4 text-[#8696a0]">
-          <Video size={22} className="cursor-pointer hover:text-white" />
-          <Phone size={20} className="cursor-pointer hover:text-white" />
-          <div className="relative">
-            <MoreVertical size={20} className="cursor-pointer hover:text-white" onClick={() => setShowMenu(!showMenu)} />
-            {showMenu && (
-              <div className="absolute right-0 top-8 bg-[#233138] w-40 rounded-lg shadow-xl py-2 z-50 border border-gray-800">
-                <button 
-                  onClick={() => { onClearChat(); setShowMenu(false); }}
-                  className="w-full text-left px-4 py-3 text-red-400 hover:bg-[#182229] flex items-center gap-2 text-sm"
-                >
-                  <Trash2 size={16} /> Clear Chat
-                </button>
-              </div>
-            )}
-          </div>
+          <Video size={22} className="opacity-50 cursor-not-allowed" />
+          <Phone size={20} className="opacity-50 cursor-not-allowed" />
         </div>
       </div>
 
@@ -201,7 +204,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* WHATSAPP INPUT AREA */}
+      {/* WHATSAPP INPUT AREA (NO VOICE) */}
       <div className="bg-[#202c33] px-2 py-2 flex items-end gap-2 z-20">
         <div className="flex-1 bg-[#2a3942] rounded-2xl flex items-center px-3 py-2 gap-2">
           <Smile className="text-[#8696a0] cursor-pointer" size={24} />
@@ -219,14 +222,15 @@ export const ChatTab: React.FC<ChatTabProps> = ({
         </div>
 
         <button 
-          onClick={() => input.trim() ? handleSend() : toggleRecording()}
+          onClick={() => handleSend()}
+          disabled={!input.trim()}
           className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md ${
-             isRecording 
-               ? 'bg-red-500 text-white animate-pulse' 
-               : 'bg-[#00a884] text-white hover:bg-[#008f6f]'
+             input.trim()
+               ? 'bg-[#00a884] text-white hover:bg-[#008f6f]' 
+               : 'bg-[#202c33] text-[#8696a0] border border-[#2a3942]'
           }`}
         >
-          {input.trim() ? <Send size={20} className="ml-0.5" /> : <Mic size={20} />}
+          <Send size={20} className={input.trim() ? "ml-0.5" : ""} />
         </button>
       </div>
     </div>
