@@ -71,7 +71,7 @@ const App: React.FC = () => {
       messages: [{ 
         id: '1', 
         role: 'model', 
-        text: 'إيه يا ابني.. فينك؟ القهوة بردت.. ☕', 
+        text: 'مالك يا ابني بتبصلي كده ليه؟ 🤨', 
         timestamp: Date.now() 
       }],
       lastModified: Date.now()
