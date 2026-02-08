@@ -16,7 +16,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
     { 
       id: '1', 
       role: 'model', 
-      text: 'الحياة زي الحلبة، مش مهم تضرب جامد.. المهم تستحمل الضرب وتفضل واقف. أنا معاك يا صاحبي، في ضهرك.. قوللي مالك؟', 
+      text: 'أنت بتؤمرني يا سي عبدالرحمن؟ ماشي يا سيدي، لما نشوف آخرة حدسك ده إيه.. وبعدين مالك مصدع ليه؟ ما أنت طول الليل سهران تبص مالبلكونة زي البومة.. المهم، لو هنجري، إمسك إيدي كويس عشان الكوتشي ده بيزحلق، مش عشان خايفة يعني! وماتكشرش كده عشان وشك بيقلب بؤس.', 
       timestamp: Date.now() 
     }
   ]);
@@ -75,7 +75,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        text: "الشبكة واقعة. ثواني وهظبطها.",
+        text: "يا دي النيلة.. الشبكة وقعت تاني. شكلك نحس يا عبدالرحمن.",
         timestamp: Date.now()
       }]);
     } finally {
@@ -150,7 +150,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
           {/* Bot Avatar Clickable */}
           <button onClick={handleBotAvatarClick} className="relative group cursor-pointer">
              <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shadow-lg group-hover:border-accent-500 transition-colors">
-                <img src={botAvatar} alt="Salah" className="w-full h-full object-cover" />
+                <img src={botAvatar} alt="Donia" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <Camera size={14} className="text-white" />
                 </div>
@@ -158,8 +158,8 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-background animate-pulse"></div>
           </button>
           <div>
-            <h1 className="text-lg font-bold text-white tracking-wide leading-none">صلاح الحريف</h1>
-            <p className="text-[10px] text-accent-500 tracking-wider uppercase mt-1 font-bold">Bodyguard • Ex-Champ</p>
+            <h1 className="text-lg font-bold text-white tracking-wide leading-none">دنيا الجندي</h1>
+            <p className="text-[10px] text-accent-500 tracking-wider uppercase mt-1 font-bold">Fugitive • Bent Akaber</p>
           </div>
         </div>
         
@@ -168,7 +168,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({ onNoteDetected, userAvatar, bo
           onClick={handleUserAvatarClick}
           className="relative group w-9 h-9 rounded-full overflow-hidden border border-white/10 hover:border-accent-500 transition-all cursor-pointer shadow-lg"
         >
-           <img src={userAvatar} alt="User" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
+           <img src={userAvatar} alt="Abdelrahman" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
               <Camera size={14} className="text-white" />
            </div>

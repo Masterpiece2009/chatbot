@@ -1,19 +1,19 @@
 {
-  "name": "Salah El-Hareef AI",
-  "short_name": "El-Hareef",
+  "name": "Donia AI",
+  "short_name": "Donia",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020617",
-  "theme_color": "#f59e0b",
+  "theme_color": "#d946ef",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/763/763811.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/6997/6997662.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/763/763811.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/6997/6997662.png",
       "sizes": "512x512",
       "type": "image/png"
     }
