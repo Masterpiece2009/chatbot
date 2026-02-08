@@ -37,13 +37,7 @@ const App: React.FC = () => {
     if (savedMessages) {
       setMessages(JSON.parse(savedMessages));
     } else {
-      // Default Initial Message if empty
-      setMessages([{ 
-        id: '1', 
-        role: 'model', 
-        text: 'هو أنت هتفضل باصص في البتاع ده كتير؟ 😒 ما تقوم تشوفلنا صرفة.. ولا أنت خلاص استريحت للقعدة دي؟ 🙄 الجو بقى تلج، مش معاك جاكيت ولا أي حاجة نتدفى بيها بدل ما إحنا قاعدين زي اللاجئين كده؟ 🥶', 
-        timestamp: Date.now() 
-      }]);
+      resetChat();
     }
   }, []);
 
@@ -64,6 +58,16 @@ const App: React.FC = () => {
   const updateBotAvatar = (url: string) => {
     setBotAvatar(url);
     localStorage.setItem('mn3em_bot_avatar', url);
+  };
+
+  const resetChat = () => {
+     const initialMsg: Message = { 
+        id: '1', 
+        role: 'model', 
+        text: 'بتفكري في إيه وأنتي ساكتة كده؟ شكلك مش عاجبني.. 🙄', 
+        timestamp: Date.now() 
+      };
+      setMessages([initialMsg]);
   };
 
   const addNote = (content: string) => {
@@ -91,10 +95,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="h-dvh w-full flex flex-col bg-background text-white font-sans overflow-hidden relative selection:bg-accent-500/30">
-      
-      {/* 1. Background Layer */}
-      <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#0f172a] to-[#020617]" />
+    <div className="h-dvh w-full flex flex-col bg-[#0b141a] text-[#e9edef] font-sans overflow-hidden relative">
       
       {/* 2. Main Content Area */}
       <main className="flex-1 overflow-hidden relative z-10 flex flex-col pt-safe-top">
@@ -103,11 +104,12 @@ const App: React.FC = () => {
             <ChatTab 
               messages={messages}
               onAddMessage={addMessage}
-              onNoteDetected={addNote} 
+              onNoteDetected={addNote}
+              onClearChat={resetChat}
               userAvatar={userAvatar} 
               botAvatar={botAvatar} 
-              onUpdateUserAvatar={updateUserAvatar}
-              onUpdateBotAvatar={updateBotAvatar}
+              // Removed updateAvatar props for cleaner WhatsApp look, 
+              // assuming avatars are static or managed in settings later
             />
           )}
           {activeTab === Tab.VOICE && (
@@ -121,57 +123,38 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Bottom Navigation HUD */}
-      <nav className="h-[88px] pb-safe-bottom bg-[#020617]/95 backdrop-blur-xl border-t border-white/5 flex items-start pt-3 justify-between px-6 z-40 relative shadow-2xl">
+      {/* Bottom Navigation HUD - WhatsApp Style */}
+      <nav className="h-[70px] pb-safe-bottom bg-[#202c33] border-t border-[#202c33] flex items-center justify-around px-2 z-40 relative">
         
-        {/* Navigation Buttons Left */}
         <button
           onClick={() => setActiveTab(Tab.CHAT)}
-          className={`flex flex-col items-center justify-center space-y-1.5 transition-all duration-300 w-16 ${
-            activeTab === Tab.CHAT ? 'text-accent-500' : 'text-slate-500 hover:text-slate-300'
+          className={`flex flex-col items-center justify-center space-y-1 w-20 py-2 rounded-xl transition-all ${
+            activeTab === Tab.CHAT ? 'bg-[#00a884]/10 text-[#00a884]' : 'text-[#8696a0]'
           }`}
         >
-          <MessageCircle size={24} strokeWidth={activeTab === Tab.CHAT ? 2.5 : 2} />
-          <span className="text-[10px] font-bold tracking-widest uppercase">Chat</span>
+          <MessageCircle size={22} fill={activeTab === Tab.CHAT ? "currentColor" : "none"} />
+          <span className="text-[12px] font-medium">Chats</span>
         </button>
 
-        {/* Center: Donia Indicator */}
-        <div className="relative -top-8 group cursor-pointer flex flex-col items-center" onClick={() => setActiveTab(Tab.CHAT)}>
-           <div className={`relative w-16 h-16 rounded-full p-1 bg-[#020617] border-2 transition-all duration-300 shadow-xl overflow-hidden z-20 ${activeTab === Tab.CHAT ? 'border-accent-500 scale-105 shadow-accent-500/20' : 'border-slate-700'}`}>
-              <img 
-                src={botAvatar} 
-                alt="Donia" 
-                className="w-full h-full rounded-full object-cover"
-              />
-           </div>
-           <span className={`text-[10px] font-bold uppercase tracking-widest mt-2 transition-colors ${activeTab === Tab.CHAT ? 'text-accent-500' : 'text-slate-600'}`}>
-             Donia
-           </span>
-           <div className={`absolute top-0 w-16 h-16 rounded-full blur-xl bg-accent-500/30 z-10 transition-opacity duration-500 ${activeTab === Tab.CHAT ? 'opacity-100' : 'opacity-0'}`}></div>
-        </div>
-
-        {/* Navigation Buttons Right */}
-        <div className="flex gap-4">
-            <button
+        <button
             onClick={() => setActiveTab(Tab.VOICE)}
-            className={`flex flex-col items-center justify-center space-y-1.5 transition-all duration-300 w-16 ${
-                activeTab === Tab.VOICE ? 'text-accent-500' : 'text-slate-500 hover:text-slate-300'
+            className={`flex flex-col items-center justify-center space-y-1 w-20 py-2 rounded-xl transition-all ${
+                activeTab === Tab.VOICE ? 'bg-[#00a884]/10 text-[#00a884]' : 'text-[#8696a0]'
             }`}
-            >
-            <Mic size={24} strokeWidth={activeTab === Tab.VOICE ? 2.5 : 2} />
-            <span className="text-[10px] font-bold tracking-widest uppercase">Voice</span>
-            </button>
+        >
+            <Mic size={22} fill={activeTab === Tab.VOICE ? "currentColor" : "none"} />
+            <span className="text-[12px] font-medium">Call</span>
+        </button>
 
-            <button
+        <button
             onClick={() => setActiveTab(Tab.NOTES)}
-            className={`flex flex-col items-center justify-center space-y-1.5 transition-all duration-300 w-16 ${
-                activeTab === Tab.NOTES ? 'text-accent-500' : 'text-slate-500 hover:text-slate-300'
+            className={`flex flex-col items-center justify-center space-y-1 w-20 py-2 rounded-xl transition-all ${
+                activeTab === Tab.NOTES ? 'bg-[#00a884]/10 text-[#00a884]' : 'text-[#8696a0]'
             }`}
-            >
-            <Database size={24} strokeWidth={activeTab === Tab.NOTES ? 2.5 : 2} />
-            <span className="text-[10px] font-bold tracking-widest uppercase">Notes</span>
-            </button>
-        </div>
+        >
+            <Database size={22} fill={activeTab === Tab.NOTES ? "currentColor" : "none"} />
+            <span className="text-[12px] font-medium">Notes</span>
+        </button>
       </nav>
     </div>
   );

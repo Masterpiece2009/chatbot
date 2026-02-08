@@ -1,33 +1,34 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from '../types';
 import { sendMessage } from '../services/geminiService';
-import { Send, Loader2, Camera } from 'lucide-react';
+import { transcribeAudio } from '../services/deepgramService';
+import { Send, Mic, MoreVertical, Phone, Video, Image as ImageIcon, Smile, Paperclip, Check, CheckCheck, Trash2 } from 'lucide-react';
 
 interface ChatTabProps {
   messages: Message[];
   onAddMessage: (role: 'user' | 'model', text: string) => void;
   onNoteDetected: (content: string) => void;
+  onClearChat: () => void;
   userAvatar: string;
   botAvatar: string;
-  onUpdateUserAvatar: (url: string) => void;
-  onUpdateBotAvatar: (url: string) => void;
 }
 
 export const ChatTab: React.FC<ChatTabProps> = ({ 
   messages, 
   onAddMessage,
-  onNoteDetected, 
+  onNoteDetected,
+  onClearChat,
   userAvatar, 
   botAvatar, 
-  onUpdateUserAvatar, 
-  onUpdateBotAvatar 
 }) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   
-  const userFileInputRef = useRef<HTMLInputElement>(null);
-  const botFileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -37,12 +38,11 @@ export const ChatTab: React.FC<ChatTabProps> = ({
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  // --- MESSAGING LOGIC ---
+  const handleSend = async (textToSend: string = input) => {
+    if (!textToSend.trim() || isLoading) return;
 
-    // 1. Add User Message
-    onAddMessage('user', input);
-    const userInput = input; // capture for async usage
+    onAddMessage('user', textToSend);
     setInput('');
     setIsLoading(true);
 
@@ -52,7 +52,7 @@ export const ChatTab: React.FC<ChatTabProps> = ({
         parts: [{ text: m.text }]
       }));
 
-      let responseText = (await sendMessage(userInput, history)) || "";
+      let responseText = (await sendMessage(textToSend, history)) || "";
       
       const noteRegex = /\|\|SAVE_NOTE:(.*?)\|\|/;
       const match = responseText.match(noteRegex);
@@ -61,10 +61,9 @@ export const ChatTab: React.FC<ChatTabProps> = ({
         responseText = responseText.replace(noteRegex, '').trim();
       }
 
-      // 2. Add Bot Message
       onAddMessage('model', responseText || "...");
     } catch (error) {
-      onAddMessage('model', "الشبكة زفت.. ما تشوف حل يا عبدالرحمن! 😤");
+      onAddMessage('model', "الشبكة زفت.. مش سامعة 😤");
     } finally {
       setIsLoading(false);
     }
@@ -77,154 +76,158 @@ export const ChatTab: React.FC<ChatTabProps> = ({
     }
   };
 
-  // User Avatar Handlers
-  const handleUserAvatarClick = () => {
-    userFileInputRef.current?.click();
-  };
+  // --- RECORDING LOGIC (Chat Mic) ---
+  const toggleRecording = async () => {
+    if (isRecording) {
+      // STOP RECORDING
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+        setIsRecording(false);
+      }
+    } else {
+      // START RECORDING
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
 
-  const handleUserFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (reader.result) {
-          onUpdateUserAvatar(reader.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) audioChunksRef.current.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          setIsLoading(true);
+          try {
+            const transcript = await transcribeAudio(audioBlob);
+            if (transcript.trim()) {
+              handleSend(transcript);
+            }
+          } catch (e) {
+            console.error(e);
+          } finally {
+            setIsLoading(false);
+          }
+          stream.getTracks().forEach(track => track.stop());
+        };
+
+        mediaRecorder.start();
+        setIsRecording(true);
+      } catch (error) {
+        alert("Microphone access denied");
+      }
     }
   };
 
-  // Bot Avatar Handlers
-  const handleBotAvatarClick = () => {
-    botFileInputRef.current?.click();
-  };
-
-  const handleBotFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (reader.result) {
-          onUpdateBotAvatar(reader.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
-    }
+  // --- FORMATTING ---
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
-    <div className="flex flex-col h-full font-sans relative">
-      {/* Hidden File Inputs */}
-      <input 
-        type="file" 
-        ref={userFileInputRef} 
-        onChange={handleUserFileChange} 
-        accept="image/*" 
-        className="hidden" 
-      />
-      <input 
-        type="file" 
-        ref={botFileInputRef} 
-        onChange={handleBotFileChange} 
-        accept="image/*" 
-        className="hidden" 
-      />
-
-      {/* Header - Transparent Glass */}
-      <div className="absolute top-0 left-0 right-0 px-6 py-4 bg-[#020617]/80 backdrop-blur-xl z-20 flex justify-between items-center border-b border-white/5 shadow-lg">
-        <div className="flex items-center gap-3">
-          {/* Bot Avatar Clickable */}
-          <button onClick={handleBotAvatarClick} className="relative group cursor-pointer">
-             <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 shadow-lg group-hover:border-accent-500 transition-colors">
-                <img src={botAvatar} alt="Donia" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera size={14} className="text-white" />
-                </div>
-             </div>
-             <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-background animate-pulse"></div>
-          </button>
-          <div>
-            <h1 className="text-lg font-bold text-white tracking-wide leading-none">دنيا الجندي</h1>
-            <p className="text-[10px] text-accent-500 tracking-wider uppercase mt-1 font-bold">Fugitive • Bent Akaber</p>
-          </div>
-        </div>
-        
-        {/* User Profile Clickable */}
-        <button 
-          onClick={handleUserAvatarClick}
-          className="relative group w-9 h-9 rounded-full overflow-hidden border border-white/10 hover:border-accent-500 transition-all cursor-pointer shadow-lg"
-        >
-           <img src={userAvatar} alt="Abdelrahman" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
-           <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-              <Camera size={14} className="text-white" />
-           </div>
-        </button>
+    <div className="flex flex-col h-full relative bg-[#0b141a]">
+      {/* BACKGROUND PATTERN */}
+      <div className="absolute inset-0 opacity-[0.06] pointer-events-none z-0" 
+           style={{ backgroundImage: 'url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png")' }}>
       </div>
 
-      {/* Messages - Added padding top to clear absolute header */}
-      <div className="flex-1 overflow-y-auto p-4 pt-24 space-y-6 no-scrollbar">
+      {/* WHATSAPP HEADER */}
+      <div className="bg-[#202c33] px-2 py-2 flex items-center justify-between z-20 shadow-sm border-b border-[#202c33]">
+        <div className="flex items-center gap-3">
+           {/* Back Arrow (Simulated) */}
+           {/* <ArrowLeft className="text-gray-300" size={24} /> */}
+           
+           <div className="relative">
+             <img src={botAvatar} alt="Donia" className="w-10 h-10 rounded-full object-cover" />
+             <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#202c33]"></div>
+           </div>
+           
+           <div className="flex flex-col">
+             <h1 className="text-gray-100 font-semibold text-base leading-tight">Donia ❤️</h1>
+             <span className="text-xs text-gray-400">
+                {isLoading ? 'typing...' : 'online'}
+             </span>
+           </div>
+        </div>
+
+        <div className="flex items-center gap-4 text-[#8696a0]">
+          <Video size={22} className="cursor-pointer hover:text-white" />
+          <Phone size={20} className="cursor-pointer hover:text-white" />
+          <div className="relative">
+            <MoreVertical size={20} className="cursor-pointer hover:text-white" onClick={() => setShowMenu(!showMenu)} />
+            {showMenu && (
+              <div className="absolute right-0 top-8 bg-[#233138] w-40 rounded-lg shadow-xl py-2 z-50 border border-gray-800">
+                <button 
+                  onClick={() => { onClearChat(); setShowMenu(false); }}
+                  className="w-full text-left px-4 py-3 text-red-400 hover:bg-[#182229] flex items-center gap-2 text-sm"
+                >
+                  <Trash2 size={16} /> Clear Chat
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* MESSAGES AREA */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 z-10 no-scrollbar">
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex items-end gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+            className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
-            {/* Avatar */}
-            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 shadow-md border border-white/5">
-              <img 
-                src={msg.role === 'user' ? userAvatar : botAvatar} 
-                alt={msg.role}
-                className="w-full h-full object-cover"
-              />
-            </div>
-
-            {/* Bubble */}
-            <div className={`max-w-[85%] px-5 py-3.5 rounded-2xl text-[15px] leading-relaxed shadow-md ${
-              msg.role === 'user' 
-                ? 'bg-accent-600 text-white rounded-br-sm' 
-                : 'bg-[#1e293b] text-gray-100 rounded-bl-sm border border-white/5'
-            }`} dir="auto">
-              {msg.text}
+            <div 
+              className={`relative max-w-[80%] px-3 py-1.5 rounded-lg shadow-sm text-[15px] leading-relaxed ${
+                msg.role === 'user' 
+                  ? 'bg-[#005c4b] text-[#e9edef] rounded-tr-none' 
+                  : 'bg-[#202c33] text-[#e9edef] rounded-tl-none'
+              }`}
+              dir="auto"
+            >
+              <span className="break-words whitespace-pre-wrap">{msg.text}</span>
+              
+              <div className={`flex items-center justify-end gap-1 mt-1 ${msg.role === 'user' ? 'text-[#8696a0]' : 'text-[#8696a0]'}`}>
+                <span className="text-[11px] min-w-[45px] text-right">
+                  {formatTime(msg.timestamp)}
+                </span>
+                {msg.role === 'user' && (
+                   <CheckCheck size={14} className="text-[#53bdeb]" />
+                )}
+              </div>
             </div>
           </div>
         ))}
-        
-        {isLoading && (
-          <div className="flex items-end gap-3">
-             <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0 grayscale opacity-70 border border-white/5">
-                <img src={botAvatar} alt="Bot" className="w-full h-full object-cover" />
-             </div>
-            <div className="bg-[#1e293b] px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-2 border border-white/5">
-              <Loader2 size={16} className="animate-spin text-accent-500" />
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} className="h-4" />
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="p-4 bg-background/95 backdrop-blur-lg border-t border-white/5 sticky bottom-0 z-20">
-        <div className="flex items-center gap-3 bg-[#0f172a] rounded-2xl px-2 py-2 border border-white/5 focus-within:border-accent-500/50 transition-colors shadow-lg">
+      {/* WHATSAPP INPUT AREA */}
+      <div className="bg-[#202c33] px-2 py-2 flex items-end gap-2 z-20">
+        <div className="flex-1 bg-[#2a3942] rounded-2xl flex items-center px-3 py-2 gap-2">
+          <Smile className="text-[#8696a0] cursor-pointer" size={24} />
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder="اكتب رسالتك هنا..."
-            className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 text-base rtl:text-right text-right font-medium px-2 py-1"
+            placeholder="Message"
+            className="flex-1 bg-transparent border-none outline-none text-[#d1d7db] placeholder-[#8696a0] text-base h-8"
+            dir="auto"
           />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || isLoading}
-            className={`p-3 rounded-xl transition-all ${
-              input.trim() && !isLoading 
-                ? 'bg-accent-500 text-white shadow-lg hover:bg-accent-600 active:scale-95' 
-                : 'bg-white/5 text-gray-500'
-            }`}
-          >
-            <Send size={20} />
-          </button>
+          <Paperclip className="text-[#8696a0] cursor-pointer -rotate-45" size={20} />
+          {!input.trim() && <ImageIcon className="text-[#8696a0] cursor-pointer" size={20} />}
         </div>
+
+        <button 
+          onClick={() => input.trim() ? handleSend() : toggleRecording()}
+          className={`w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md ${
+             isRecording 
+               ? 'bg-red-500 text-white animate-pulse' 
+               : 'bg-[#00a884] text-white hover:bg-[#008f6f]'
+          }`}
+        >
+          {input.trim() ? <Send size={20} className="ml-0.5" /> : <Mic size={20} />}
+        </button>
       </div>
     </div>
   );
