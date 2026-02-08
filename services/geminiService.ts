@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
 // API KEYS
 // GROQ used for chat logic
@@ -99,33 +99,6 @@ export const generateImage = async (prompt: string): Promise<string> => {
     throw new Error("No image generated");
   } catch (error) {
     console.error("Image Gen Error:", error);
-    throw error;
-  }
-};
-
-// --- SPEECH FUNCTION (POWERED BY GEMINI TTS) ---
-export const generateSpeech = async (text: string): Promise<string> => {
-  try {
-    const response = await googleAi.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Kore' },
-          },
-        },
-      },
-    });
-
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (base64Audio) {
-      return base64Audio;
-    }
-    throw new Error("No audio generated");
-  } catch (error) {
-    console.error("Speech Gen Error:", error);
     throw error;
   }
 };
