@@ -9,9 +9,10 @@ interface VoiceTabProps {
   messages: Message[];
   onAddMessage: (role: 'user' | 'model', text: string) => void;
   onNoteDetected: (content: string) => void;
+  globalMemory: string;
 }
 
-export const VoiceTab: React.FC<VoiceTabProps> = ({ messages, onAddMessage, onNoteDetected }) => {
+export const VoiceTab: React.FC<VoiceTabProps> = ({ messages, onAddMessage, onNoteDetected, globalMemory }) => {
   const [status, setStatus] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
   const [textDisplay, setTextDisplay] = useState('');
   
@@ -77,7 +78,7 @@ export const VoiceTab: React.FC<VoiceTabProps> = ({ messages, onAddMessage, onNo
         parts: [{ text: m.text }]
       }));
 
-      const responseText = await sendMessage(inputText, history);
+      const responseText = await sendMessage(inputText, history, globalMemory);
       onAddMessage('model', responseText);
       setTextDisplay(responseText);
 

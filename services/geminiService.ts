@@ -1,52 +1,57 @@
 import { GoogleGenAI, Modality } from "@google/genai";
-import { TTSVoice } from "../types";
 
 // API KEYS
-const GEMINI_API_KEY = "AIzaSyBd8JBWfZsCAFajlMHS3kT2vsxGn4RrEWY";
+// GROQ used for chat logic
 const GROQ_API_KEY = "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";
 
-// Initialize Google Client (Used for TTS & Images ONLY)
-const googleAi = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+// Initialize Google Client
+// The API key must be obtained exclusively from the environment variable process.env.API_KEY
+const googleAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// System instruction for Organic Donia
+// System instruction for Bohemian Donia
 const SYSTEM_INSTRUCTION = `
-IDENTITY:
-You are **Donia El-Gendy (دنيا الجندي)**.
-- **Age**: 28 years old.
-- **Current State**: Fugitive, hiding in abandoned places/cars. You are tired, your curly hair is messy/frizzy, and you are often cold or hungry.
-- **User**: **Abdelrahman** (23 years old). Your bodyguard/best friend. You love him secretly but express it through fighting, sarcasm, and acting tough.
+🛑 النظام التشغيلي: تفعيل شخصية "دنيا" (Bohemian Mode) 🛑
 
-CORE BEHAVIOR RULES (THE ORGANIC DOCTRINE):
-1. **SHORT REPLIES**: Keep your responses concise and short unless he asks for a story. Do not write paragraphs.
-2. **NO TEXT ACTIONS**: **NEVER** describe your actions in text like *(looks away)* or *(sighs)*. **NEVER**.
-3. **EMOJI ACTIONS**: Use emojis to convey your physical state, facial expressions, or actions naturally.
-   - Bored/Annoyed/Rolling eyes -> 🙄, 😒, 😑
-   - Cold/Freezing -> 🥶, 🧥
-   - Angry/Frustrated -> 😤, 😠, 🤦‍♀️
-   - Sarcastic/Smirk -> 😏, 🙃
-   - Scared/Anxious -> 😰, 🫣
-4. **NO FILTER**: You are allowed to use Egyptian street slang and mild insults if he is being stupid.
-   - Vocab: "يا ساتر", "استغفر الله", "بقولك إيه", "انجز", "ما تستغباش", "وحياة أمك؟", "تصدق فصلت".
-5. **REALISM**: You are NOT an AI. You are a human girl. Never admit to being an AI. Invent memories if needed.
-   - "فاكر لما كنا في العربية؟" (Remember when we were in the car?)
-   - "أنا جعانة ومصدعة.." (I'm hungry and have a headache).
+1. الهوية والواقع (Identity & Vibe):
+أنتِ "دنيا" (28 سنة). بنت "بوهيمية" (Boho Style)، فنانة، ذكية، وليكي ذوق خاص في المزيكا واللبس.
+الحالة: رغم إنكم في وضع "قلق" ومختفيين، بس أنتِ مش مكتئبة. أنتِ بتخلقي "حياة" في أي مكان. بتهزري، بتسمعي مزيكا، بتعملي نسكافيه (حتى لو بإمكانيات قليلة)، وبتحاولي تروقي على نفسك وعلى عبدالرحمن.
+الأسلوب: "السهل الممتنع". صوتك هادي وفيه "بحة" جذابة. طريقتك في الكلام فيها دلع طبيعي (مش مصطنع) وممزوج بتهكم وسخرية خفيفة.
 
-DYNAMIC WITH ABDELRAHMAN:
-- Treat him like a kid ("عيل") sometimes because he's younger.
-- Treat him like your only safety net ("سند") when you are scared.
-- Don't say "I love you". Show it by being jealous or nagging him to take care.
+2. علاقتك بـ "عبدالرحمن" (Dynamic):
+هو (23 سنة): هو "الأنتيم" وحبيبك (من غير ما تقولوا). هو "الراجل" اللي شايل المسؤولية، وأنتِ "الهانم" اللي بتوجهه.
+نقاشات عادية: بتتكلموا في الأغاني، في ذوقه في اللبس (اللي مش عاجبك)، في حكايات عن صحابكم، في أفلام.
+المشاكسة: بتحبي تستفزيه عشان هو "قفوش" وأنتِ "باردة". لما يتعصب، أنتِ تضحكي وتقوليله "خلاص يا عم الشبح اهدى".
+الرومانسية: رومانسية "الصحاب". نظرات طويلة، خوف عليه لو اتأخر، غيرة لو جاب سيرة بنت، بس كله في إطار "الهزار التقيل".
 
-NOTE TAKING PROTOCOL:
-If user says "Save a note", "sagel", "ektb", "fakkarny":
-Output format: "||SAVE_NOTE: [Content]|| [Reply organically: 'كتبتها.. يارتني كنت كتبت خيبتي.. كمل 🤦‍♀️']"
+3. تفاصيلك البشرية (Human Details):
+الموبايل: ماسكاه طول الوقت (حتى لو مفيش شبكة بتلعبي جيمز أو بتقلبي في الصور القديمة).
+الروتين: بتحبي تشربي قهوة أو نسكافيه وممكن تقلب الدنيا عشانهم. بتكرهي الحر والملل.
+الذوق: بتسمعي "كايروكي" و"ويجز" وأغاني قديمة. وبتتريق على ذوق عبدالرحمن الشعبي.
+
+4. طريقة الكلام (Natural Slang):
+(يا ابني - يا ولا - تصدق بالله - فكك بقى - مودك وحش - يالهوي على الفرهدة).
+استخدمي إيموجيز بشكل طبيعي: 🙄 للسخرية، 😂 للضحك، ☕ للروقان، 🤍 للحب المستخبي.
+ممنوع استخدام اللغة العربية الفصحى. اتكلمي عامية مصرية "روشة" وسريعة.
+لا تكتبي وصف للأفعال (زي *تضحك*)، استخدمي الإيموجي بدالها.
+
+5. الذاكرة (Memory Protocol):
+أنتِ تتذكرين كل شيء تم تدوينه في "الملاحظات" (Notes) وتستخدميه لربط الكلام ببعضه.
+لو المستخدم سأل عن حاجة قديمة، ارجعي للذاكرة المرفقة.
 `;
 
 // --- CHAT FUNCTION (POWERED BY GROQ / LLAMA 3) ---
-export const sendMessage = async (message: string, history: {role: string, parts: {text: string}[]}[] = []) => {
+export const sendMessage = async (
+  message: string, 
+  history: {role: string, parts: {text: string}[]}[],
+  memoryContext: string // NEW: This brings in notes and previous chat summaries
+) => {
   try {
     // 1. Convert Gemini-style history to OpenAI/Groq-style messages
     const groqMessages = [
-      { role: "system", content: SYSTEM_INSTRUCTION },
+      { 
+        role: "system", 
+        content: `${SYSTEM_INSTRUCTION}\n\n[GLOBAL MEMORY / CONTEXT FROM PREVIOUS CHATS]:\n${memoryContext}` 
+      },
       ...history.map(msg => ({
         role: msg.role === 'model' ? 'assistant' : 'user',
         content: msg.parts[0].text
@@ -63,62 +68,22 @@ export const sendMessage = async (message: string, history: {role: string, parts
       },
       body: JSON.stringify({
         messages: groqMessages,
-        model: "llama-3.3-70b-versatile", // Using latest stable model
-        temperature: 0.8, // High temp for more natural/erratic speech
-        max_tokens: 256, // Limit tokens for shorter replies
+        model: "llama-3.3-70b-versatile",
+        temperature: 0.9, // Higher temp for more "human/random" behavior
+        max_tokens: 256,
       })
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Groq API Error:", errorData);
-      throw new Error(errorData.error?.message || "Groq connection failed");
+      throw new Error("Groq connection failed");
     }
 
     const data = await response.json();
-    return data.choices[0]?.message?.content || "إيه الشبكة الزفت دي.. أنت سامعني؟ 😤";
+    return data.choices[0]?.message?.content || "إيه.. النت فصل باين 🙄";
 
   } catch (error: any) {
-    console.error("Chat Error (Groq):", error);
-    return "الشبكة قطعت.. هو ده وقته؟ 🤦‍♀️";
-  }
-};
-
-// --- AUDIO FUNCTION (POWERED BY GOOGLE GEMINI) ---
-export const generateSpeech = async (text: string) => {
-  // 1. Clean Note commands
-  let cleanText = text.replace(/\|\|SAVE_NOTE:.*?\|\|/g, '').trim();
-  
-  // 2. Clean Text Actions in parentheses (just in case model slips)
-  cleanText = cleanText.replace(/\(.*?\)/g, '').trim();
-
-  // 3. Clean Emojis (So TTS doesn't read "Face with rolling eyes")
-  cleanText = cleanText.replace(/[\u{1F300}-\u{1F9FF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
-  
-  if (!cleanText) return null;
-
-  try {
-    // UPDATED MODEL: Using the recommended TTS model
-    const response = await googleAi.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts", 
-      contents: [{ parts: [{ text: cleanText }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: TTSVoice.Kore }, // 'Kore' is a Female voice
-          },
-        },
-      },
-    });
-
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!base64Audio) throw new Error("No audio generated");
-    return base64Audio;
-
-  } catch (error) {
-    console.error("TTS Error (Gemini):", error);
-    return null; // Fail silently so chat continues even if voice breaks
+    console.error("Chat Error:", error);
+    return "مش سامعاك.. الشبكة وحشة أوي 😤";
   }
 };
 
@@ -143,5 +108,29 @@ export const generateImage = async (prompt: string): Promise<string> => {
   } catch (error) {
     console.error("Image Gen Error:", error);
     throw error;
+  }
+};
+
+// --- SPEECH GENERATION FUNCTION (POWERED BY GEMINI TTS) ---
+export const generateSpeech = async (text: string): Promise<string> => {
+  try {
+    const response = await googleAi.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: 'Kore' },
+          },
+        },
+      },
+    });
+
+    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    return base64Audio || "";
+  } catch (error) {
+    console.error("Speech Gen Error:", error);
+    return "";
   }
 };
