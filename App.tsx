@@ -29,6 +29,13 @@ const App: React.FC = () => {
     const savedGallery = localStorage.getItem('mn3em_gallery');
     if (savedGallery) setGallery(JSON.parse(savedGallery));
 
+    // Load Avatars
+    const savedUserAvatar = localStorage.getItem('mn3em_user_avatar');
+    if (savedUserAvatar) setUserAvatar(savedUserAvatar);
+
+    const savedBotAvatar = localStorage.getItem('mn3em_bot_avatar');
+    if (savedBotAvatar) setBotAvatar(savedBotAvatar);
+
     const savedSessions = localStorage.getItem('mn3em_sessions');
     let loadedSessions: ChatSession[] = [];
     
@@ -54,6 +61,10 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('mn3em_gallery', JSON.stringify(gallery)); }, [gallery]);
   useEffect(() => { localStorage.setItem('mn3em_sessions', JSON.stringify(sessions)); }, [sessions]);
   useEffect(() => { localStorage.setItem('mn3em_current_session_id', currentSessionId); }, [currentSessionId]);
+  
+  // Save Avatars
+  useEffect(() => { localStorage.setItem('mn3em_user_avatar', userAvatar); }, [userAvatar]);
+  useEffect(() => { localStorage.setItem('mn3em_bot_avatar', botAvatar); }, [botAvatar]);
 
   // -- SESSION MANAGEMENT --
   const createNewSession = (currentList = sessions, switchToIt = true) => {
@@ -249,8 +260,18 @@ const App: React.FC = () => {
             />
           )}
 
-          {/* VIEW 4: NOTES/PROFILE (Hidden or reused) */}
-          {activeTab === Tab.PROFILE && <NotesTab notes={notes} onDelete={deleteNote} onAdd={addNote} />}
+          {/* VIEW 4: NOTES/PROFILE */}
+          {activeTab === Tab.PROFILE && (
+            <NotesTab 
+              notes={notes} 
+              onDelete={deleteNote} 
+              onAdd={addNote}
+              userAvatar={userAvatar}
+              botAvatar={botAvatar}
+              onUpdateUserAvatar={setUserAvatar}
+              onUpdateBotAvatar={setBotAvatar}
+            />
+          )}
         </div>
       </main>
 

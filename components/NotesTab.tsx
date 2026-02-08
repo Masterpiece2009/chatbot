@@ -1,15 +1,24 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Note } from '../types';
-import { Trash2, Plus, Bookmark } from 'lucide-react';
+import { Trash2, Plus, Bookmark, Camera } from 'lucide-react';
 
 interface NotesTabProps {
   notes: Note[];
   onDelete: (id: string) => void;
   onAdd: (content: string) => void;
+  userAvatar: string;
+  botAvatar: string;
+  onUpdateUserAvatar: (url: string) => void;
+  onUpdateBotAvatar: (url: string) => void;
 }
 
-export const NotesTab: React.FC<NotesTabProps> = ({ notes, onDelete, onAdd }) => {
+export const NotesTab: React.FC<NotesTabProps> = ({ 
+  notes, onDelete, onAdd,
+  userAvatar, botAvatar, onUpdateUserAvatar, onUpdateBotAvatar
+}) => {
   const [newNote, setNewNote] = React.useState('');
+  const userFileInputRef = useRef<HTMLInputElement>(null);
+  const botFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAdd = () => {
     if (newNote.trim()) {
@@ -18,24 +27,121 @@ export const NotesTab: React.FC<NotesTabProps> = ({ notes, onDelete, onAdd }) =>
     }
   };
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>, isBot: boolean) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // Compress for avatar (smaller size)
+          const MAX_SIZE = 400;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx?.drawImage(img, 0, 0, width, height);
+          
+          // JPEG 0.7 quality
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          
+          if (isBot) onUpdateBotAvatar(dataUrl);
+          else onUpdateUserAvatar(dataUrl);
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-black text-white">
       {/* Header */}
       <div className="h-[60px] flex items-center justify-center border-b border-[#262626]">
         <h1 className="font-bold text-lg flex items-center gap-2">
-          Donia's Memory <Bookmark size={18} />
+          Profile & Memories <Bookmark size={18} />
         </h1>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar p-1">
-        {/* Add Note Section - Styled like a "Create" area */}
+        
+        {/* PROFILE SETTINGS SECTION */}
+        <div className="p-6 mb-4 border-b border-[#262626]">
+          <h2 className="text-xs font-bold text-gray-500 mb-4 uppercase tracking-widest text-center">Identity Setup</h2>
+          <div className="flex justify-center gap-12 items-center">
+            
+            {/* User Avatar */}
+            <div className="flex flex-col items-center gap-3">
+               <div 
+                 className="relative w-20 h-20 rounded-full group cursor-pointer ring-2 ring-[#3797f0] p-1" 
+                 onClick={() => userFileInputRef.current?.click()}
+               >
+                  <img src={userAvatar} className="w-full h-full rounded-full object-cover bg-gray-800" alt="You" />
+                  <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                     <Camera size={24} className="text-white drop-shadow-md" />
+                  </div>
+               </div>
+               <span className="text-sm font-semibold text-gray-300">You</span>
+               <input 
+                 type="file" 
+                 ref={userFileInputRef} 
+                 className="hidden" 
+                 accept="image/*" 
+                 onChange={(e) => handleFileSelect(e, false)} 
+               />
+            </div>
+
+            <div className="h-12 w-[1px] bg-[#262626]"></div>
+
+            {/* Bot Avatar */}
+            <div className="flex flex-col items-center gap-3">
+               <div 
+                 className="relative w-20 h-20 rounded-full group cursor-pointer ring-2 ring-pink-500 p-1" 
+                 onClick={() => botFileInputRef.current?.click()}
+               >
+                  <img src={botAvatar} className="w-full h-full rounded-full object-cover bg-gray-800" alt="Donia" />
+                  <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                     <Camera size={24} className="text-white drop-shadow-md" />
+                  </div>
+               </div>
+               <span className="text-sm font-semibold text-gray-300">Donia</span>
+               <input 
+                 type="file" 
+                 ref={botFileInputRef} 
+                 className="hidden" 
+                 accept="image/*" 
+                 onChange={(e) => handleFileSelect(e, true)} 
+               />
+            </div>
+
+          </div>
+        </div>
+
+        {/* Add Note Section */}
         <div className="p-4 mb-2">
+           <h3 className="text-sm font-bold text-gray-400 mb-3">Saved Memories</h3>
            <div className="flex gap-2">
              <input
                value={newNote}
                onChange={(e) => setNewNote(e.target.value)}
-               placeholder="Add a new memory..."
-               className="flex-1 bg-[#262626] rounded-lg px-4 py-2 text-sm text-white outline-none border border-transparent focus:border-[#3797f0]"
+               placeholder="Write something to remember forever..."
+               className="flex-1 bg-[#262626] rounded-lg px-4 py-3 text-sm text-white outline-none border border-transparent focus:border-[#3797f0]"
              />
              <button 
                onClick={handleAdd}
@@ -47,14 +153,10 @@ export const NotesTab: React.FC<NotesTabProps> = ({ notes, onDelete, onAdd }) =>
            </div>
         </div>
 
-        {/* Notes Grid - Instagram Style */}
+        {/* Notes Grid */}
         {notes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center mt-20 text-gray-500 gap-4">
-            <div className="w-20 h-20 rounded-full border-2 border-gray-700 flex items-center justify-center">
-               <Bookmark size={40} />
-            </div>
-            <p className="text-lg font-bold text-white">No Memories Yet</p>
-            <p className="text-xs text-center max-w-[200px]">When you save notes or ask Donia to remember things, they will appear here.</p>
+          <div className="flex flex-col items-center justify-center py-12 text-gray-500 gap-4">
+            <p className="text-xs text-center max-w-[200px] text-gray-600">No written memories yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-1 px-1">
