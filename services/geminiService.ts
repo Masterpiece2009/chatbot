@@ -3,9 +3,6 @@ import { GoogleGenAI } from "@google/genai";
 // API KEYS
 const GROQ_API_KEY = "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";
 
-// Initialize Google Client
-const googleAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 // System instruction for Bohemian Donia
 const SYSTEM_INSTRUCTION = `
 🛑 النظام التشغيلي: تفعيل شخصية "دنيا" (Bohemian Mode) 🛑
@@ -77,6 +74,9 @@ export const sendMessage = async (
 // --- IMAGE FUNCTION (POWERED BY GOOGLE IMAGEN) ---
 export const generateImage = async (prompt: string): Promise<string> => {
   try {
+    // Initialize Google Client inside function to avoid crash on load if API Key is missing
+    const googleAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    
     const response = await googleAi.models.generateImages({
       model: 'imagen-3.0-generate-001',
       prompt: prompt,
@@ -93,6 +93,7 @@ export const generateImage = async (prompt: string): Promise<string> => {
     throw new Error("No image generated");
   } catch (error) {
     console.error("Image Gen Error:", error);
+    // Return a placeholder or throw a user-friendly error
     throw error;
   }
 };
