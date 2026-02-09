@@ -8,14 +8,14 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/6997/6997662.png",
+      "src": "https://img.freepik.com/premium-photo/digital-painting-girl-with-curly-hair-orange-shirt_968529-87385.jpg",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/jpeg"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/6997/6997662.png",
+      "src": "https://img.freepik.com/premium-photo/digital-painting-girl-with-curly-hair-orange-shirt_968529-87385.jpg",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/jpeg"
     }
   ]
 }

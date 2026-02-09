@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Tab, Note, ChatSession, GalleryItem } from './types';
 import { ChatTab } from './components/ChatTab';
 import { GalleryTab } from './components/GalleryTab';
 import { NotesTab } from './components/NotesTab';
-import { Search, Home, PlusSquare, Image as ImageIcon } from 'lucide-react';
+import { Search, Home, PlusSquare, Image as ImageIcon, Trash2, Bell } from 'lucide-react';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.CHAT);
@@ -12,7 +12,8 @@ const App: React.FC = () => {
   
   // -- CONFIGURATION --
   const DEFAULT_USER_AVATAR = "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop";
-  const DEFAULT_BOT_AVATAR = "https://images.unsplash.com/photo-1541250628459-d5f27719a0a9?q=80&w=600&auto=format&fit=crop"; 
+  // Updated default bot avatar to match new icon
+  const DEFAULT_BOT_AVATAR = "https://img.freepik.com/premium-photo/digital-painting-girl-with-curly-hair-orange-shirt_968529-87385.jpg"; 
 
   const [userAvatar, setUserAvatar] = useState<string>(DEFAULT_USER_AVATAR);
   const [botAvatar, setBotAvatar] = useState<string>(DEFAULT_BOT_AVATAR);
@@ -21,6 +22,10 @@ const App: React.FC = () => {
   // -- SESSIONS STATE --
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
+
+  // -- NOTIFICATION REF --
+  const lastInteractionTime = useRef<number>(Date.now());
+  const notificationSent = useRef<boolean>(false);
 
   // Load Data
   useEffect(() => {
@@ -58,6 +63,11 @@ const App: React.FC = () => {
          setCurrentSessionId(loadedSessions[0].id);
        }
     }
+
+    // REQUEST NOTIFICATION PERMISSION
+    if ('Notification' in window) {
+      Notification.requestPermission();
+    }
   }, []);
 
   // Save Data
@@ -74,8 +84,50 @@ const App: React.FC = () => {
     else localStorage.removeItem('mn3em_chat_bg');
   }, [chatBackground]);
 
+  // -- NOTIFICATION LOGIC (THE "CLINGY" FEATURE) --
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      // If user hasn't interacted in 30 seconds (demo time) or 2 hours (real time)
+      // Changing to 45 seconds for demo purposes so the user can see it happen
+      const INACTIVITY_THRESHOLD = 45 * 1000; 
+      
+      if (now - lastInteractionTime.current > INACTIVITY_THRESHOLD && !notificationSent.current) {
+        triggerNotification();
+        notificationSent.current = true; // Don't spam
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const triggerNotification = () => {
+    if (Notification.permission === 'granted') {
+      const messages = [
+        "فينك يا بيبي؟ وحشتني 🥺",
+        "مش بترد عليا ليه؟ 🙄",
+        "هو احنا مش هنتكلم النهاردة ولا ايه؟",
+        "بتعمل ايه من غيري؟ ☕",
+        "صباح الخير.. ولا انت لسه نايم؟"
+      ];
+      const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+      
+      new Notification("Donia 🤍", {
+        body: randomMsg,
+        icon: botAvatar,
+        tag: 'donia-reminder'
+      });
+    }
+  };
+
+  const updateInteraction = () => {
+    lastInteractionTime.current = Date.now();
+    notificationSent.current = false;
+  };
+
   // -- SESSION MANAGEMENT --
   const createNewSession = (currentList = sessions, switchToIt = true) => {
+    updateInteraction();
     const newSession: ChatSession = {
       id: Date.now().toString(),
       title: 'New Chat',
@@ -100,21 +152,25 @@ const App: React.FC = () => {
 
   const deleteSession = (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation(); 
-    const updated = sessions.filter(s => s.id !== sessionId);
-    setSessions(updated);
-    if (currentSessionId === sessionId) {
-      if (updated.length > 0) setCurrentSessionId(updated[0].id);
-      else createNewSession([], false);
+    if (window.confirm("امسح الشات ده؟ 🗑️")) {
+        const updated = sessions.filter(s => s.id !== sessionId);
+        setSessions(updated);
+        if (currentSessionId === sessionId) {
+        if (updated.length > 0) setCurrentSessionId(updated[0].id);
+        else createNewSession([], false);
+        }
     }
   };
 
   const openSession = (sessionId: string) => {
+    updateInteraction();
     setCurrentSessionId(sessionId);
     setActiveTab(Tab.ACTIVE_CHAT);
   };
 
   // -- DATA LOGIC --
   const addMessageToCurrent = (role: 'user' | 'model', text: string) => {
+    updateInteraction();
     setSessions(prev => prev.map(session => {
       if (session.id === currentSessionId) {
         let newTitle = session.title;
@@ -138,12 +194,14 @@ const App: React.FC = () => {
   };
 
   const addNote = (content: string) => {
+    updateInteraction();
     setNotes(prev => [{ id: Date.now().toString(), content, timestamp: Date.now() }, ...prev]);
   };
 
   const deleteNote = (id: string) => setNotes(prev => prev.filter(n => n.id !== id));
 
   const addGalleryItem = (url: string, caption: string) => {
+    updateInteraction();
     setGallery(prev => [{ id: Date.now().toString(), url, caption, timestamp: Date.now() }, ...prev]);
   };
 
@@ -163,7 +221,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="h-dvh w-full flex flex-col bg-black text-white font-sans overflow-hidden relative">
+    <div className="h-dvh w-full flex flex-col bg-black text-white font-sans overflow-hidden relative" onClick={updateInteraction}>
       
       <main className="flex-1 overflow-hidden relative z-10 flex flex-col pt-safe-top">
         <div className="flex-1 overflow-hidden relative">
@@ -210,14 +268,17 @@ const App: React.FC = () => {
                </div>
 
                {/* Chat List */}
-               {/* Reusing Chat List Logic from prev version */}
-               {/* ... (Implementation is implicit from previous file, condensed here for brevity as no logic changed in list view) ... */}
                <div className="flex-1 overflow-y-auto mt-2">
+                   <div className="px-4 mb-2 flex justify-between items-center">
+                    <span className="font-bold text-base">Messages</span>
+                    <span className="text-[#3797f0] text-sm">Requests (0)</span>
+                   </div>
+                   
                    {sessions.map(session => (
                     <div 
                       key={session.id} 
                       onClick={() => openSession(session.id)}
-                      className="flex items-center justify-between px-4 py-3 active:bg-[#121212]"
+                      className="group flex items-center justify-between px-4 py-3 active:bg-[#121212] transition-colors relative"
                     >
                        <div className="flex items-center gap-3 overflow-hidden">
                           <img src={botAvatar} className="w-14 h-14 rounded-full object-cover border border-[#262626]" alt="Av" />
@@ -230,6 +291,14 @@ const App: React.FC = () => {
                        </div>
                        <div className="flex flex-col items-end gap-1">
                           <span className="text-xs text-gray-500">{new Date(session.lastModified).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                          
+                          {/* DELETE BUTTON */}
+                          <button 
+                            onClick={(e) => deleteSession(e, session.id)} 
+                            className="text-gray-600 p-2 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-all"
+                          >
+                             <Trash2 size={18} />
+                          </button>
                        </div>
                     </div>
                   ))}
