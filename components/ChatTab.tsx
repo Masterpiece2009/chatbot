@@ -87,10 +87,29 @@ export const ChatTab: React.FC<ChatTabProps> = ({
   if (!session) return <div>Session not found</div>;
 
   return (
-    <div className="flex flex-col h-full bg-black text-white">
+    <div className="flex flex-col h-full bg-black text-white relative overflow-hidden">
       
-      {/* INSTAGRAM DM HEADER */}
-      <div className="h-[60px] flex items-center justify-between px-4 border-b border-[#262626] z-10 bg-black">
+      {/* 1. FIXED BACKGROUND LAYER (Outside Scroll View) */}
+      {chatBackground && (
+        <div className="absolute inset-0 z-0">
+           {chatBackground.startsWith('#') ? (
+             <div style={{ backgroundColor: chatBackground }} className="w-full h-full" />
+           ) : (
+             <>
+               <img 
+                 src={chatBackground} 
+                 className="w-full h-full object-cover" 
+                 alt="Chat Background" 
+               />
+               {/* Dark Overlay for text readability */}
+               <div className="absolute inset-0 bg-black/40"></div> 
+             </>
+           )}
+        </div>
+      )}
+
+      {/* 2. HEADER (Z-INDEX 20) */}
+      <div className="h-[60px] flex items-center justify-between px-4 border-b border-[#262626] z-20 bg-black/80 backdrop-blur-sm relative">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="text-white">
              <ArrowLeft size={28} />
@@ -110,69 +129,47 @@ export const ChatTab: React.FC<ChatTabProps> = ({
         </div>
       </div>
 
-      {/* MESSAGES AREA */}
-      <div 
-        className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar relative"
-        style={{ 
-          backgroundColor: !chatBackground ? '#000' : 'transparent',
-        }}
-      >
-        {/* Background Layer */}
-        {chatBackground && (
-          <div 
-            className="absolute inset-0 z-0"
-            style={{
-              backgroundImage: chatBackground.startsWith('http') || chatBackground.startsWith('data:') ? `url(${chatBackground})` : undefined,
-              backgroundColor: !chatBackground.startsWith('http') && !chatBackground.startsWith('data:') ? chatBackground : undefined,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              opacity: 0.6 // Slight dim so text is readable
-            }}
-          />
-        )}
-
-        {/* Content Layer */}
-        <div className="relative z-10">
-          <div className="text-center text-xs text-gray-500 my-4 shadow-black drop-shadow-md">
-             {new Date(session.lastModified).toLocaleDateString()} · {new Date(session.lastModified).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-          </div>
-
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex w-full mb-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {/* Bot Avatar for received messages */}
-              {msg.role === 'model' && (
-                 <img src={botAvatar} className="w-7 h-7 rounded-full object-cover mr-2 self-end mb-1 border border-white/10" alt="Bot" />
-              )}
-
-              <div 
-                className={`max-w-[75%] px-4 py-3 text-[15px] leading-snug rounded-[22px] shadow-sm backdrop-blur-sm ${
-                  msg.role === 'user' 
-                    ? 'bg-[#3797f0] text-white rounded-br-md' // Instagram Blue
-                    : 'bg-[#262626]/90 text-white rounded-bl-md border border-white/5' // Dark Grey with opacity
-                }`}
-                dir="auto"
-              >
-                {msg.text}
-              </div>
-            </div>
-          ))}
-          {isLoading && (
-             <div className="flex justify-start mb-4">
-                <img src={botAvatar} className="w-7 h-7 rounded-full object-cover mr-2 self-end mb-1" alt="Bot" />
-                <div className="bg-[#262626] text-gray-400 px-4 py-3 rounded-[22px] rounded-bl-md text-sm">
-                   typing...
-                </div>
-             </div>
-          )}
-          <div ref={messagesEndRef} />
+      {/* 3. SCROLLABLE MESSAGES AREA (Z-INDEX 10) */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar relative z-10 bg-transparent">
+        <div className="text-center text-xs text-gray-400 my-4 shadow-black drop-shadow-md font-medium">
+           {new Date(session.lastModified).toLocaleDateString()} · {new Date(session.lastModified).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
         </div>
+
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex w-full mb-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            {/* Bot Avatar for received messages */}
+            {msg.role === 'model' && (
+               <img src={botAvatar} className="w-7 h-7 rounded-full object-cover mr-2 self-end mb-1 border border-white/10 shadow-sm" alt="Bot" />
+            )}
+
+            <div 
+              className={`max-w-[75%] px-4 py-3 text-[15px] leading-snug rounded-[22px] shadow-sm backdrop-blur-md ${
+                msg.role === 'user' 
+                  ? 'bg-[#3797f0] text-white rounded-br-md' // Instagram Blue
+                  : 'bg-[#262626]/80 text-white rounded-bl-md border border-white/10' // Dark Grey with opacity
+              }`}
+              dir="auto"
+            >
+              {msg.text}
+            </div>
+          </div>
+        ))}
+        {isLoading && (
+           <div className="flex justify-start mb-4">
+              <img src={botAvatar} className="w-7 h-7 rounded-full object-cover mr-2 self-end mb-1" alt="Bot" />
+              <div className="bg-[#262626]/80 text-gray-400 px-4 py-3 rounded-[22px] rounded-bl-md text-sm border border-white/10 backdrop-blur-sm">
+                 typing...
+              </div>
+           </div>
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* INSTAGRAM INPUT AREA */}
-      <div className="p-4 flex items-center gap-3 bg-black z-10 border-t border-[#262626]">
+      {/* 4. INPUT AREA (Z-INDEX 20) */}
+      <div className="p-4 flex items-center gap-3 bg-black z-20 border-t border-[#262626] relative">
          <div className="w-9 h-9 bg-[#262626] rounded-full flex items-center justify-center text-[#3797f0]">
             <ImageIcon size={20} />
          </div>

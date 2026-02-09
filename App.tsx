@@ -29,6 +29,8 @@ const App: React.FC = () => {
   // -- EXIT LOGIC STATE --
   const lastBackPressTime = useRef<number>(0);
   const [showExitToast, setShowExitToast] = useState(false);
+  const [notificationStatus, setNotificationStatus] = useState<string>(""); // For in-app debug
+  
   // Keep track of activeTab in ref for event listeners
   const activeTabRef = useRef(activeTab);
 
@@ -74,53 +76,58 @@ const App: React.FC = () => {
        }
     }
 
-    // --- REQUEST PERMISSION AND SEND TEST NOTIFICATION ---
-    if ('Notification' in window) {
-      Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-          // Send IMMEDIATE TEST notification
-          try {
-             new Notification("Donia System 🔔", {
-               body: "✅ Notifications Active: Test Successful!",
-               icon: DEFAULT_BOT_AVATAR,
-               tag: 'test-notification'
-             });
-          } catch (e) {
-            console.error("Test notification failed", e);
-          }
-        }
-      });
-    }
+    // --- INITIAL NOTIFICATION CHECK ---
+    requestNotificationPermission(false);
   }, []);
+
+  const requestNotificationPermission = (forceTest: boolean) => {
+    if (!('Notification' in window)) return;
+
+    Notification.requestPermission().then((permission) => {
+      if (permission === 'granted') {
+        // Only send test if specifically requested OR on first load if we haven't done it this session
+        // (Using simple sessionStorage to avoid spamming on reload, or just fire always for test)
+        if (forceTest || !sessionStorage.getItem('test_notif_sent')) {
+           sendTestNotification();
+           sessionStorage.setItem('test_notif_sent', 'true');
+        }
+      }
+    });
+  };
+
+  const sendTestNotification = () => {
+    try {
+        const n = new Notification("Donia System 🔔", {
+            body: "✅ Notifications Active: Test Successful!",
+            icon: botAvatar,
+            tag: 'test-notification',
+            vibrate: [200, 100, 200]
+        } as any);
+        setNotificationStatus("Test Notification Sent!");
+        setTimeout(() => setNotificationStatus(""), 3000);
+    } catch (e) {
+        console.error("Test notification failed", e);
+    }
+  }
 
   // -- BACK BUTTON HANDLING (Double Press to Exit) --
   useEffect(() => {
-    // Inject a state to the history stack to "trap" the back button
     window.history.pushState(null, document.title, window.location.href);
 
     const handlePopState = (event: PopStateEvent) => {
       const currentTab = activeTabRef.current;
       
-      // If we are NOT in the home tab (Chat List), go back to home
       if (currentTab !== Tab.CHAT) {
         setActiveTab(Tab.CHAT);
-        // Re-push state so we can trap the next back press
         window.history.pushState(null, document.title, window.location.href);
       } else {
-        // We are in Home Tab. Check for double press.
         const now = Date.now();
         if (now - lastBackPressTime.current < 2000) {
-          // Double press detected (< 2 seconds).
-          // Allow the pop to happen (which effectively exits if at root, or goes back).
-          // To ensure exit on PWA, we can try going back one more time if needed, 
-          // but usually letting the event pass without pushing state is enough to exit the history trap.
           window.history.back(); 
         } else {
-          // First press
           lastBackPressTime.current = now;
           setShowExitToast(true);
           setTimeout(() => setShowExitToast(false), 2000);
-          // Restore the trap
           window.history.pushState(null, document.title, window.location.href);
         }
       }
@@ -148,7 +155,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
-      // Time before she gets "Clingy" (30 seconds for demo, usually higher)
       const INACTIVITY_THRESHOLD = 30 * 1000; 
       
       if (now - lastInteractionTime.current > INACTIVITY_THRESHOLD && !notificationSent.current) {
@@ -163,9 +169,7 @@ const App: React.FC = () => {
   const triggerNotification = () => {
     if (Notification.permission === 'granted') {
       
-      // 1. DIVERSE MESSAGE POOL (Randomness)
       const messages = [
-        // The Clingy/Cute
         "فينك يا بيبي؟ وحشتني 🥺",
         "مش بترد عليا ليه؟ 🙄",
         "هو احنا مش هنتكلم النهاردة ولا ايه؟",
@@ -175,23 +179,18 @@ const App: React.FC = () => {
         "انت زعلان مني؟ 😢",
         "رد بقى يا عم المهم..",
         "بقولك ايه.. وحشتني ❤️",
-        
-        // The "Fake Media" (Mimics WhatsApp/Insta previews)
         "🎤 Voice message (0:14)", 
         "🎤 Voice message (0:09)",
         "📷 Photo", 
         "📷 Photo",
         "Missed call 📞",
         "sent a video 📹",
-        
-        // The Random
         "هو انت نسيتني ولا ايه؟ 😂",
         "ممكن ترد؟ ضروري 🚨"
       ];
 
       const randomMsg = messages[Math.floor(Math.random() * messages.length)];
       
-      // 2. TRIGGER NOTIFICATION
       try {
         new Notification("Donia 🤍", {
           body: randomMsg,
@@ -209,6 +208,12 @@ const App: React.FC = () => {
   const updateInteraction = () => {
     lastInteractionTime.current = Date.now();
     notificationSent.current = false;
+    
+    // Sometimes browsers block initial notification permission requests until user gesture.
+    // We try again on first tap.
+    if (Notification.permission === 'default') {
+        requestNotificationPermission(true);
+    }
   };
 
   // -- SESSION MANAGEMENT --
@@ -438,6 +443,13 @@ const App: React.FC = () => {
       {showExitToast && (
         <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-2 rounded-full shadow-lg z-50 text-sm animate-pulse border border-gray-600">
            Click back again to exit 🚪
+        </div>
+      )}
+      
+      {/* TEST NOTIFICATION TOAST */}
+      {notificationStatus && (
+        <div className="fixed top-10 left-1/2 transform -translate-x-1/2 bg-[#3797f0] text-white px-6 py-2 rounded-full shadow-lg z-50 text-sm animate-bounce">
+           {notificationStatus}
         </div>
       )}
 
