@@ -25,6 +25,17 @@ const App: React.FC = () => {
   // -- NOTIFICATION REF --
   const lastInteractionTime = useRef<number>(Date.now());
   const notificationSent = useRef<boolean>(false);
+  
+  // -- EXIT LOGIC STATE --
+  const lastBackPressTime = useRef<number>(0);
+  const [showExitToast, setShowExitToast] = useState(false);
+  // Keep track of activeTab in ref for event listeners
+  const activeTabRef = useRef(activeTab);
+
+  // Update ref when state changes
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
 
   // Load Data
   useEffect(() => {
@@ -63,21 +74,69 @@ const App: React.FC = () => {
        }
     }
 
-    // REQUEST NOTIFICATION PERMISSION ON LOAD
+    // --- REQUEST PERMISSION AND SEND TEST NOTIFICATION ---
     if ('Notification' in window) {
-      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-        Notification.requestPermission();
-      }
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          // Send IMMEDIATE TEST notification
+          try {
+             new Notification("Donia System 🔔", {
+               body: "✅ Notifications Active: Test Successful!",
+               icon: DEFAULT_BOT_AVATAR,
+               tag: 'test-notification'
+             });
+          } catch (e) {
+            console.error("Test notification failed", e);
+          }
+        }
+      });
     }
   }, []);
 
-  // Save Data
+  // -- BACK BUTTON HANDLING (Double Press to Exit) --
+  useEffect(() => {
+    // Inject a state to the history stack to "trap" the back button
+    window.history.pushState(null, document.title, window.location.href);
+
+    const handlePopState = (event: PopStateEvent) => {
+      const currentTab = activeTabRef.current;
+      
+      // If we are NOT in the home tab (Chat List), go back to home
+      if (currentTab !== Tab.CHAT) {
+        setActiveTab(Tab.CHAT);
+        // Re-push state so we can trap the next back press
+        window.history.pushState(null, document.title, window.location.href);
+      } else {
+        // We are in Home Tab. Check for double press.
+        const now = Date.now();
+        if (now - lastBackPressTime.current < 2000) {
+          // Double press detected (< 2 seconds).
+          // Allow the pop to happen (which effectively exits if at root, or goes back).
+          // To ensure exit on PWA, we can try going back one more time if needed, 
+          // but usually letting the event pass without pushing state is enough to exit the history trap.
+          window.history.back(); 
+        } else {
+          // First press
+          lastBackPressTime.current = now;
+          setShowExitToast(true);
+          setTimeout(() => setShowExitToast(false), 2000);
+          // Restore the trap
+          window.history.pushState(null, document.title, window.location.href);
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Save Data Effects
   useEffect(() => { localStorage.setItem('mn3em_notes', JSON.stringify(notes)); }, [notes]);
   useEffect(() => { localStorage.setItem('mn3em_gallery', JSON.stringify(gallery)); }, [gallery]);
   useEffect(() => { localStorage.setItem('mn3em_sessions', JSON.stringify(sessions)); }, [sessions]);
   useEffect(() => { localStorage.setItem('mn3em_current_session_id', currentSessionId); }, [currentSessionId]);
   
-  // Save Config
+  // Save Config Effects
   useEffect(() => { localStorage.setItem('mn3em_user_avatar', userAvatar); }, [userAvatar]);
   useEffect(() => { localStorage.setItem('mn3em_bot_avatar', botAvatar); }, [botAvatar]);
   useEffect(() => { 
@@ -85,7 +144,7 @@ const App: React.FC = () => {
     else localStorage.removeItem('mn3em_chat_bg');
   }, [chatBackground]);
 
-  // -- INTELLIGENT NOTIFICATION SYSTEM --
+  // -- INTELLIGENT NOTIFICATION SYSTEM (THE CLINGY MODE) --
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
@@ -133,13 +192,12 @@ const App: React.FC = () => {
       const randomMsg = messages[Math.floor(Math.random() * messages.length)];
       
       // 2. TRIGGER NOTIFICATION
-      // We use the botAvatar as the icon to look native
       try {
         new Notification("Donia 🤍", {
           body: randomMsg,
           icon: botAvatar,
-          badge: botAvatar, // Try to show badge on Android
-          tag: 'donia-message', // Overwrites previous to avoid stacking too much
+          badge: botAvatar, 
+          tag: 'donia-message', 
           vibrate: [200, 100, 200]
         } as any);
       } catch (e) {
@@ -375,6 +433,13 @@ const App: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* EXIT TOAST NOTIFICATION */}
+      {showExitToast && (
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-2 rounded-full shadow-lg z-50 text-sm animate-pulse border border-gray-600">
+           Click back again to exit 🚪
+        </div>
+      )}
 
       {/* INSTAGRAM NAV */}
       {activeTab !== Tab.ACTIVE_CHAT && (
