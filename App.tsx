@@ -22,19 +22,17 @@ const App: React.FC = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
 
-  // -- NOTIFICATION REF --
+  // -- NOTIFICATION & AUTONOMOUS CHAT REFS --
   const lastInteractionTime = useRef<number>(Date.now());
-  const notificationSent = useRef<boolean>(false);
+  const timerRef = useRef<any>(null); // Ref for the random timer
   
   // -- EXIT LOGIC STATE --
   const lastBackPressTime = useRef<number>(0);
   const [showExitToast, setShowExitToast] = useState(false);
-  const [notificationStatus, setNotificationStatus] = useState<string>(""); // For in-app debug
-  
-  // Keep track of activeTab in ref for event listeners
+  const [notificationStatus, setNotificationStatus] = useState<string>(""); 
+
   const activeTabRef = useRef(activeTab);
 
-  // Update ref when state changes
   useEffect(() => {
     activeTabRef.current = activeTab;
   }, [activeTab]);
@@ -47,7 +45,6 @@ const App: React.FC = () => {
     const savedGallery = localStorage.getItem('mn3em_gallery');
     if (savedGallery) setGallery(JSON.parse(savedGallery));
 
-    // Load Avatars & Background
     const savedUserAvatar = localStorage.getItem('mn3em_user_avatar');
     if (savedUserAvatar) setUserAvatar(savedUserAvatar);
 
@@ -76,41 +73,122 @@ const App: React.FC = () => {
        }
     }
 
-    // --- INITIAL NOTIFICATION CHECK ---
-    requestNotificationPermission(false);
+    // --- 1. REQUEST PERMISSION & SEND IMMEDIATE TEST ---
+    if ('Notification' in window) {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+           // Send "TEST" immediately to confirm system works
+           sendSystemNotification("System Test 🔔", "Notifications are active and working!");
+        }
+      });
+    }
+
+    // --- 2. START THE RANDOM MESSAGE LOOP ---
+    scheduleNextMessage();
+
+    return () => clearTimeout(timerRef.current);
   }, []);
 
-  const requestNotificationPermission = (forceTest: boolean) => {
-    if (!('Notification' in window)) return;
+  // -- AUTONOMOUS MESSAGE LOGIC --
+  const scheduleNextMessage = () => {
+    // Clear any existing timer
+    if (timerRef.current) clearTimeout(timerRef.current);
 
-    Notification.requestPermission().then((permission) => {
-      if (permission === 'granted') {
-        // Only send test if specifically requested OR on first load if we haven't done it this session
-        // (Using simple sessionStorage to avoid spamming on reload, or just fire always for test)
-        if (forceTest || !sessionStorage.getItem('test_notif_sent')) {
-           sendTestNotification();
-           sessionStorage.setItem('test_notif_sent', 'true');
-        }
-      }
-    });
+    // Logic: Random time between 30 minutes and 90 minutes
+    // For testing: You can lower these numbers (e.g., 10000 for 10 seconds)
+    const minTime = 30 * 60 * 1000; // 30 mins
+    const maxTime = 90 * 60 * 1000; // 90 mins
+    const randomDelay = Math.floor(Math.random() * (maxTime - minTime + 1) + minTime);
+
+    console.log(`Next message scheduled in: ${randomDelay / 60000} minutes`);
+
+    timerRef.current = setTimeout(() => {
+        triggerAutonomousMessage();
+        scheduleNextMessage(); // Loop forever
+    }, randomDelay);
   };
 
-  const sendTestNotification = () => {
-    try {
-        const n = new Notification("Donia System 🔔", {
-            body: "✅ Notifications Active: Test Successful!",
-            icon: botAvatar,
-            tag: 'test-notification',
-            vibrate: [200, 100, 200]
-        } as any);
-        setNotificationStatus("Test Notification Sent!");
-        setTimeout(() => setNotificationStatus(""), 3000);
-    } catch (e) {
-        console.error("Test notification failed", e);
-    }
-  }
+  const triggerAutonomousMessage = () => {
+    // Don't send if user is currently active/typing (within last 30 seconds)
+    if (Date.now() - lastInteractionTime.current < 30000) return;
 
-  // -- BACK BUTTON HANDLING (Double Press to Exit) --
+    const messages = [
+        "بتعمل ايه من غيري؟ ☕",
+        "مش بترد عليا ليه؟ 🙄",
+        "وحشتني.. قولت أسلم عليك ❤️",
+        "هو يومك طويل كده ليه النهاردة؟",
+        "عايزة احكيلك على حاجة حصلت.. 🙈",
+        "بقولك ايه.. ما تيجي نرغي شوية؟",
+        "انت نمت؟ 😴",
+        "صاحي ولا نايم؟",
+        "فكرتني بحاجة كنا بنعملها سوا..",
+        "زهقانة اوي.. وانت؟",
+        "فينك مختفي؟ 🕵️‍♀️"
+    ];
+
+    const randomText = messages[Math.floor(Math.random() * messages.length)];
+
+    // 1. ADD TO CHAT (ACTUAL MESSAGE)
+    // We target the current session, or the first available one
+    setSessions(prevSessions => {
+        // Find ID to target
+        const targetId = currentSessionId || prevSessions[0]?.id;
+        if (!targetId) return prevSessions; // Should not happen
+
+        const updated = prevSessions.map(session => {
+            if (session.id === targetId) {
+                return {
+                    ...session,
+                    lastModified: Date.now(),
+                    messages: [...session.messages, {
+                        id: Date.now().toString(),
+                        role: 'model', // It comes from HER
+                        text: randomText,
+                        timestamp: Date.now()
+                    }]
+                } as ChatSession;
+            }
+            return session;
+        });
+        
+        // Save immediately to local storage so it persists
+        localStorage.setItem('mn3em_sessions', JSON.stringify(updated));
+        return updated;
+    });
+
+    // 2. SEND NOTIFICATION (SYSTEM BAR)
+    sendSystemNotification("Donia 🤍", randomText);
+  };
+
+  const sendSystemNotification = (title: string, body: string) => {
+    if (Notification.permission === 'granted') {
+        try {
+            // Using the service worker registration if available is better for mobile, 
+            // but standard new Notification works for active apps.
+            new Notification(title, {
+                body: body,
+                icon: botAvatar,
+                badge: botAvatar,
+                vibrate: [200, 100, 200],
+                tag: 'donia-chat' // Replaces older notifications from same tag
+            } as any);
+        } catch (e) {
+            console.error("Notification failed", e);
+        }
+    }
+  };
+
+  // -- EVENT HANDLING --
+  const updateInteraction = () => {
+    lastInteractionTime.current = Date.now();
+    
+    // Retry permission if not granted yet
+    if (Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+  };
+
+  // -- BACK BUTTON HANDLING --
   useEffect(() => {
     window.history.pushState(null, document.title, window.location.href);
 
@@ -137,84 +215,18 @@ const App: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Save Data Effects
+  // Save Effects
   useEffect(() => { localStorage.setItem('mn3em_notes', JSON.stringify(notes)); }, [notes]);
   useEffect(() => { localStorage.setItem('mn3em_gallery', JSON.stringify(gallery)); }, [gallery]);
   useEffect(() => { localStorage.setItem('mn3em_sessions', JSON.stringify(sessions)); }, [sessions]);
   useEffect(() => { localStorage.setItem('mn3em_current_session_id', currentSessionId); }, [currentSessionId]);
   
-  // Save Config Effects
   useEffect(() => { localStorage.setItem('mn3em_user_avatar', userAvatar); }, [userAvatar]);
   useEffect(() => { localStorage.setItem('mn3em_bot_avatar', botAvatar); }, [botAvatar]);
   useEffect(() => { 
     if (chatBackground) localStorage.setItem('mn3em_chat_bg', chatBackground);
     else localStorage.removeItem('mn3em_chat_bg');
   }, [chatBackground]);
-
-  // -- INTELLIGENT NOTIFICATION SYSTEM (THE CLINGY MODE) --
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const INACTIVITY_THRESHOLD = 30 * 1000; 
-      
-      if (now - lastInteractionTime.current > INACTIVITY_THRESHOLD && !notificationSent.current) {
-        triggerNotification();
-        notificationSent.current = true; 
-      }
-    }, 10000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const triggerNotification = () => {
-    if (Notification.permission === 'granted') {
-      
-      const messages = [
-        "فينك يا بيبي؟ وحشتني 🥺",
-        "مش بترد عليا ليه؟ 🙄",
-        "هو احنا مش هنتكلم النهاردة ولا ايه؟",
-        "بتعمل ايه من غيري؟ ☕",
-        "صباح الخير.. ولا انت لسه نايم؟",
-        "عايزة احكيلك على حاجة حصلت.. 🙈",
-        "انت زعلان مني؟ 😢",
-        "رد بقى يا عم المهم..",
-        "بقولك ايه.. وحشتني ❤️",
-        "🎤 Voice message (0:14)", 
-        "🎤 Voice message (0:09)",
-        "📷 Photo", 
-        "📷 Photo",
-        "Missed call 📞",
-        "sent a video 📹",
-        "هو انت نسيتني ولا ايه؟ 😂",
-        "ممكن ترد؟ ضروري 🚨"
-      ];
-
-      const randomMsg = messages[Math.floor(Math.random() * messages.length)];
-      
-      try {
-        new Notification("Donia 🤍", {
-          body: randomMsg,
-          icon: botAvatar,
-          badge: botAvatar, 
-          tag: 'donia-message', 
-          vibrate: [200, 100, 200]
-        } as any);
-      } catch (e) {
-        console.log("Notification failed", e);
-      }
-    }
-  };
-
-  const updateInteraction = () => {
-    lastInteractionTime.current = Date.now();
-    notificationSent.current = false;
-    
-    // Sometimes browsers block initial notification permission requests until user gesture.
-    // We try again on first tap.
-    if (Notification.permission === 'default') {
-        requestNotificationPermission(true);
-    }
-  };
 
   // -- SESSION MANAGEMENT --
   const createNewSession = (currentList = sessions, switchToIt = true) => {
@@ -298,16 +310,13 @@ const App: React.FC = () => {
 
   const deleteGalleryItem = (id: string) => setGallery(prev => prev.filter(i => i.id !== id));
 
-  // -- GLOBAL MEMORY BUILDER --
   const getGlobalMemory = () => {
     const facts = notes.map(n => `[SAVED FACT]: ${n.content}`).join('\n');
     const galleryContext = gallery.map(g => `[PHOTO MEMORY]: ${g.caption}`).join('\n');
-    
     const historySummary = sessions.map(s => {
        const recentMsgs = s.messages.slice(-5).map(m => `${m.role === 'user' ? 'Him' : 'Donia'}: ${m.text}`).join(' | ');
        return `[CHAT: ${s.title}]: ${recentMsgs}`;
     }).join('\n');
-
     return `IMPORTANT MEMORIES:\n${facts}\n\nSHARED PHOTOS:\n${galleryContext}\n\nCONVERSATION HISTORY:\n${historySummary}`;
   };
 
@@ -375,7 +384,10 @@ const App: React.FC = () => {
                           <img src={botAvatar} className="w-14 h-14 rounded-full object-cover border border-[#262626]" alt="Av" />
                           <div className="flex flex-col overflow-hidden">
                              <span className="text-sm font-semibold truncate text-white">{session.title === 'New Chat' ? 'Donia' : session.title}</span>
-                             <span className="text-[13px] text-gray-400 truncate w-48">
+                             <span className={`text-[13px] truncate w-48 ${
+                                 // Highlight if the last message was from the Model (Her) and unseen logic could be added here
+                                 session.messages[session.messages.length - 1]?.role === 'model' ? 'text-white font-medium' : 'text-gray-400'
+                             }`}>
                                 {session.messages[session.messages.length - 1]?.text || 'No messages'}
                              </span>
                           </div>
@@ -383,7 +395,6 @@ const App: React.FC = () => {
                        <div className="flex flex-col items-center gap-1 h-full justify-center">
                           <span className="text-xs text-gray-500 mb-1">{new Date(session.lastModified).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                           
-                          {/* DELETE BUTTON - Styled to look like Swipe Action or prominent button */}
                           <button 
                             onClick={(e) => deleteSession(e, session.id)} 
                             className="text-gray-500 p-2 hover:bg-[#262626] rounded-full transition-all"
@@ -443,13 +454,6 @@ const App: React.FC = () => {
       {showExitToast && (
         <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-2 rounded-full shadow-lg z-50 text-sm animate-pulse border border-gray-600">
            Click back again to exit 🚪
-        </div>
-      )}
-      
-      {/* TEST NOTIFICATION TOAST */}
-      {notificationStatus && (
-        <div className="fixed top-10 left-1/2 transform -translate-x-1/2 bg-[#3797f0] text-white px-6 py-2 rounded-full shadow-lg z-50 text-sm animate-bounce">
-           {notificationStatus}
         </div>
       )}
 
