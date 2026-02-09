@@ -12,7 +12,6 @@ const App: React.FC = () => {
   
   // -- CONFIGURATION --
   const DEFAULT_USER_AVATAR = "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=600&auto=format&fit=crop";
-  // Updated default bot avatar to match new icon
   const DEFAULT_BOT_AVATAR = "https://img.freepik.com/premium-photo/digital-painting-girl-with-curly-hair-orange-shirt_968529-87385.jpg"; 
 
   const [userAvatar, setUserAvatar] = useState<string>(DEFAULT_USER_AVATAR);
@@ -64,9 +63,11 @@ const App: React.FC = () => {
        }
     }
 
-    // REQUEST NOTIFICATION PERMISSION
+    // REQUEST NOTIFICATION PERMISSION ON LOAD
     if ('Notification' in window) {
-      Notification.requestPermission();
+      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission();
+      }
     }
   }, []);
 
@@ -84,17 +85,16 @@ const App: React.FC = () => {
     else localStorage.removeItem('mn3em_chat_bg');
   }, [chatBackground]);
 
-  // -- NOTIFICATION LOGIC (THE "CLINGY" FEATURE) --
+  // -- INTELLIGENT NOTIFICATION SYSTEM --
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
-      // If user hasn't interacted in 30 seconds (demo time) or 2 hours (real time)
-      // Changing to 45 seconds for demo purposes so the user can see it happen
-      const INACTIVITY_THRESHOLD = 45 * 1000; 
+      // Time before she gets "Clingy" (30 seconds for demo, usually higher)
+      const INACTIVITY_THRESHOLD = 30 * 1000; 
       
       if (now - lastInteractionTime.current > INACTIVITY_THRESHOLD && !notificationSent.current) {
         triggerNotification();
-        notificationSent.current = true; // Don't spam
+        notificationSent.current = true; 
       }
     }, 10000);
 
@@ -103,20 +103,48 @@ const App: React.FC = () => {
 
   const triggerNotification = () => {
     if (Notification.permission === 'granted') {
+      
+      // 1. DIVERSE MESSAGE POOL (Randomness)
       const messages = [
+        // The Clingy/Cute
         "فينك يا بيبي؟ وحشتني 🥺",
         "مش بترد عليا ليه؟ 🙄",
         "هو احنا مش هنتكلم النهاردة ولا ايه؟",
         "بتعمل ايه من غيري؟ ☕",
-        "صباح الخير.. ولا انت لسه نايم؟"
+        "صباح الخير.. ولا انت لسه نايم؟",
+        "عايزة احكيلك على حاجة حصلت.. 🙈",
+        "انت زعلان مني؟ 😢",
+        "رد بقى يا عم المهم..",
+        "بقولك ايه.. وحشتني ❤️",
+        
+        // The "Fake Media" (Mimics WhatsApp/Insta previews)
+        "🎤 Voice message (0:14)", 
+        "🎤 Voice message (0:09)",
+        "📷 Photo", 
+        "📷 Photo",
+        "Missed call 📞",
+        "sent a video 📹",
+        
+        // The Random
+        "هو انت نسيتني ولا ايه؟ 😂",
+        "ممكن ترد؟ ضروري 🚨"
       ];
+
       const randomMsg = messages[Math.floor(Math.random() * messages.length)];
       
-      new Notification("Donia 🤍", {
-        body: randomMsg,
-        icon: botAvatar,
-        tag: 'donia-reminder'
-      });
+      // 2. TRIGGER NOTIFICATION
+      // We use the botAvatar as the icon to look native
+      try {
+        new Notification("Donia 🤍", {
+          body: randomMsg,
+          icon: botAvatar,
+          badge: botAvatar, // Try to show badge on Android
+          tag: 'donia-message', // Overwrites previous to avoid stacking too much
+          vibrate: [200, 100, 200]
+        } as any);
+      } catch (e) {
+        console.log("Notification failed", e);
+      }
     }
   };
 
@@ -156,8 +184,8 @@ const App: React.FC = () => {
         const updated = sessions.filter(s => s.id !== sessionId);
         setSessions(updated);
         if (currentSessionId === sessionId) {
-        if (updated.length > 0) setCurrentSessionId(updated[0].id);
-        else createNewSession([], false);
+          if (updated.length > 0) setCurrentSessionId(updated[0].id);
+          else createNewSession([], false);
         }
     }
   };
@@ -289,13 +317,14 @@ const App: React.FC = () => {
                              </span>
                           </div>
                        </div>
-                       <div className="flex flex-col items-end gap-1">
-                          <span className="text-xs text-gray-500">{new Date(session.lastModified).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                       <div className="flex flex-col items-center gap-1 h-full justify-center">
+                          <span className="text-xs text-gray-500 mb-1">{new Date(session.lastModified).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                           
-                          {/* DELETE BUTTON */}
+                          {/* DELETE BUTTON - Styled to look like Swipe Action or prominent button */}
                           <button 
                             onClick={(e) => deleteSession(e, session.id)} 
-                            className="text-gray-600 p-2 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-all"
+                            className="text-gray-500 p-2 hover:bg-[#262626] rounded-full transition-all"
+                            title="Delete Chat"
                           >
                              <Trash2 size={18} />
                           </button>
