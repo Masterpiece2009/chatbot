@@ -1,5 +1,5 @@
 {
-  "name": "Donia AI",
+  "name": "Donia",
   "short_name": "Donia",
   "start_url": "/",
   "display": "standalone",
@@ -8,12 +8,12 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://img.freepik.com/premium-photo/digital-painting-girl-with-curly-hair-orange-shirt_968529-87385.jpg",
+      "src": "https://img.freepik.com/free-photo/androgynous-avatar-non-binary-queer-person_23-2151100221.jpg?t=st=1770644796~exp=1770648396~hmac=d7a2cc831cfe81ff389856baa483b6c70e9c3c9bb0cf6828747fcadb200a66fe",
       "sizes": "192x192",
       "type": "image/jpeg"
     },
     {
-      "src": "https://img.freepik.com/premium-photo/digital-painting-girl-with-curly-hair-orange-shirt_968529-87385.jpg",
+      "src": "https://img.freepik.com/free-photo/androgynous-avatar-non-binary-queer-person_23-2151100221.jpg?t=st=1770644796~exp=1770648396~hmac=d7a2cc831cfe81ff389856baa483b6c70e9c3c9bb0cf6828747fcadb200a66fe",
       "sizes": "512x512",
       "type": "image/jpeg"
     }
