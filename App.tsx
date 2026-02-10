@@ -32,6 +32,19 @@ const App: React.FC = () => {
   const lastBackPressTime = useRef<number>(0);
   const [showExitToast, setShowExitToast] = useState(false);
 
+  // -- SYSTEM DESIGN CONTENT --
+  const SYSTEM_DESIGN_TIPS = [
+    "عبده، بفكر في الـ Chatbot اللي بتعمله.. تفتكر نستخدم Microservices ولا Monolith أحسن في البداية؟ 🤔",
+    "بتذاكر System Analysis؟ خد بالك من الـ Requirements Gathering، هي أهم مرحلة! 📝",
+    "إيه رأيك في الـ Singleton Pattern؟ ناس كتير بتقول عليه Anti-pattern، تفتكر ليه؟",
+    "لو الداتابيز كبرت منك، هتعمل Sharding ولا Replication الأول؟ 💾",
+    "الـ SOLID Principles.. مراجعة سريعة: الـ S يعني Single Responsibility. بتطبقه في كودك؟",
+    "رسمت الـ Class Diagram للمشروع الجديد ولا لسه؟ 📐",
+    "تعرف إن الـ Coupling العالي في الكود بيصعب الـ Testing؟ حاولت تفصل الـ Business Logic عن الـ UI؟",
+    "قريت عن الـ CAP Theorem؟ تفتكر إحنا محتاجين Consistency أكتر ولا Availability في الداتابيز بتاعتنا؟",
+    "إيه رأيك نستخدم Observer Pattern في نظام الإشعارات ده؟ 🤓"
+  ];
+
   const activeTabRef = useRef(activeTab);
 
   useEffect(() => {
@@ -66,6 +79,7 @@ const App: React.FC = () => {
     if (loadedSessions.length === 0) {
        createNewSession([], false);
     } else {
+       // Check if there's a stored "current session" we should open (e.g. from a notification click)
        const savedCurrentId = localStorage.getItem('mn3em_current_session_id');
        if (savedCurrentId && loadedSessions.find(s => s.id === savedCurrentId)) {
          setCurrentSessionId(savedCurrentId);
@@ -103,6 +117,7 @@ const App: React.FC = () => {
     const intervalId = setInterval(() => {
         checkAndSendScheduledMessages();
         checkAndSendRandomMessages();
+        checkAndSendStudyTips();
     }, 60000); 
 
     return () => clearInterval(intervalId);
@@ -134,9 +149,7 @@ const App: React.FC = () => {
       ];
 
       schedules.forEach(slot => {
-          // Check if it's the right hour (allows for a 59-minute window to catch it if phone was asleep)
           if (currentHour === slot.hour) {
-              // Check storage to see if we already sent this TODAY
               const storageKey = `donia_sent_${todayKey}_${slot.key}`;
               const alreadySent = localStorage.getItem(storageKey);
 
@@ -175,7 +188,6 @@ const App: React.FC = () => {
              const lastRandomSent = localStorage.getItem('last_random_msg_time');
              const timeSinceLastRandom = lastRandomSent ? (now - parseInt(lastRandomSent)) : 99999999;
              
-             // Minimum 3 hours between RANDOM messages
              if (timeSinceLastRandom > (3 * 60 * 60 * 1000)) { 
                 triggerAutonomousMessage(msg);
                 localStorage.setItem('last_random_msg_time', now.toString());
@@ -184,11 +196,33 @@ const App: React.FC = () => {
       }
   };
 
+  const checkAndSendStudyTips = () => {
+      const now = Date.now();
+      const lastMsgTime = lastInteractionTime.current;
+      const diffInMinutes = (now - lastMsgTime) / 1000 / 60;
+
+      // Study tips logic:
+      // Send if user has been inactive for a bit (e.g., > 90 mins) to prompt study
+      if (diffInMinutes > 90) {
+          // 10% chance per check
+          if (Math.random() < 0.1) {
+              const lastStudySent = localStorage.getItem('last_study_msg_time');
+              const timeSinceLastStudy = lastStudySent ? (now - parseInt(lastStudySent)) : 99999999;
+
+              // Max 1 study tip every 4 hours
+              if (timeSinceLastStudy > (4 * 60 * 60 * 1000)) {
+                  const tip = SYSTEM_DESIGN_TIPS[Math.floor(Math.random() * SYSTEM_DESIGN_TIPS.length)];
+                  triggerStudyMessage(tip);
+                  localStorage.setItem('last_study_msg_time', now.toString());
+              }
+          }
+      }
+  };
+
+  // Trigger for Normal Messages
   const triggerAutonomousMessage = (text: string) => {
-    // 1. Update React State & Local Storage (The Chat)
     setSessions(currentSessions => {
         const targetId = currentSessionId || (currentSessions.length > 0 ? currentSessions[0].id : null);
-        
         if (!targetId) return currentSessions;
 
         const updatedSessions = currentSessions.map(session => {
@@ -198,7 +232,7 @@ const App: React.FC = () => {
                     lastModified: Date.now(),
                     messages: [...session.messages, {
                         id: Date.now().toString(),
-                        role: 'model',
+                        role: 'model' as const,
                         text: text,
                         timestamp: Date.now()
                     }]
@@ -211,10 +245,62 @@ const App: React.FC = () => {
         return updatedSessions;
     });
 
-    // 2. Send Notification (The Notification Bar)
     sendSystemNotification("Donia", text);
-    
-    // Update last interaction so we don't spam immediately
+    lastInteractionTime.current = Date.now();
+  };
+
+  // Trigger for Study Messages (Targeting "System Design" Chat)
+  const triggerStudyMessage = (text: string) => {
+    setSessions(currentSessions => {
+        // Find or Create System Design Session
+        let designSession = currentSessions.find(s => s.title === "System Design 🎓");
+        let newSessionsList = [...currentSessions];
+
+        if (!designSession) {
+            designSession = {
+                id: 'sys_design_' + Date.now(),
+                title: 'System Design 🎓',
+                messages: [{
+                    id: Date.now().toString(),
+                    role: 'model' as const,
+                    text: "أهلاً يا عبده! هنا هنذاكر سوا System Analysis & Design. 📚",
+                    timestamp: Date.now()
+                }],
+                lastModified: Date.now()
+            };
+            newSessionsList = [designSession, ...currentSessions];
+        }
+
+        // Add message to that session
+        const updatedSessions = newSessionsList.map(session => {
+            if (session.id === designSession!.id) {
+                return {
+                    ...session,
+                    lastModified: Date.now(),
+                    messages: [...session.messages, {
+                        id: Date.now().toString(),
+                        role: 'model' as const,
+                        text: text,
+                        timestamp: Date.now()
+                    }]
+                };
+            }
+            return session;
+        });
+
+        localStorage.setItem('mn3em_sessions', JSON.stringify(updatedSessions));
+        
+        // IMPORTANT: Set this as the current session ID in storage.
+        // If the app is opened via notification, it will read this ID and open this chat.
+        localStorage.setItem('mn3em_current_session_id', designSession.id);
+        
+        // If the app is currently open, we can optionally switch to it immediately:
+        // setCurrentSessionId(designSession.id); 
+        
+        return updatedSessions;
+    });
+
+    sendSystemNotification("Donia (Study Buddy) 🎓", text);
     lastInteractionTime.current = Date.now();
   };
 
@@ -222,16 +308,17 @@ const App: React.FC = () => {
     if (Notification.permission === 'granted') {
         try {
             // Instagram-like notification parameters
-            const options: any = { // Using any to bypass TS strict typing for 'vibrate' on some envs
+            const options: any = { 
                 body: body,
-                icon: botAvatar, // Using her picture as icon
-                badge: 'https://cdn-icons-png.flaticon.com/512/733/733558.png', // Small monochrome icon 
-                vibrate: [200, 100, 200], // Vibration pattern
-                tag: 'donia-dm', // Grouping tag
-                renotify: true, // Vibrate even if another notification is already there
+                icon: botAvatar, 
+                badge: 'https://cdn-icons-png.flaticon.com/512/733/733558.png', 
+                vibrate: [200, 100, 200], 
+                tag: 'donia-dm', 
+                renotify: true, 
+                requireInteraction: true, // Keep notification until user interacts
                 data: { url: '/' },
                 actions: [
-                    { action: 'reply', title: 'Reply' }
+                    { action: 'open', title: 'Open Chat' }
                 ]
             };
 
