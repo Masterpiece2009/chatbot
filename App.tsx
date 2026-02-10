@@ -3,7 +3,7 @@ import { Tab, Note, ChatSession, GalleryItem } from './types';
 import { ChatTab } from './components/ChatTab';
 import { GalleryTab } from './components/GalleryTab';
 import { NotesTab } from './components/NotesTab';
-import { Search, Home, PlusSquare, Image as ImageIcon, Trash2, Bell } from 'lucide-react';
+import { Search, Home, PlusSquare, Image as ImageIcon, Trash2 } from 'lucide-react';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.CHAT);
@@ -24,7 +24,6 @@ const App: React.FC = () => {
 
   // -- NOTIFICATION & AUTONOMOUS CHAT REFS --
   const lastInteractionTime = useRef<number>(Date.now());
-  const timerRef = useRef<any>(null); // Ref for the random timer
   
   // -- EXIT LOGIC STATE --
   const lastBackPressTime = useRef<number>(0);
@@ -73,105 +72,159 @@ const App: React.FC = () => {
        }
     }
 
-    // --- 1. REQUEST PERMISSION & SEND IMMEDIATE TEST ---
+    // --- 1. REQUEST PERMISSION ---
     if ('Notification' in window) {
-      Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-           // Send "TEST" immediately to confirm system works
-           sendSystemNotification("System Test 🔔", "Notifications are active and working!");
-        }
-      });
+      Notification.requestPermission();
     }
-
-    // --- 2. START THE RANDOM MESSAGE LOOP ---
-    scheduleNextMessage();
-
-    return () => clearTimeout(timerRef.current);
   }, []);
 
-  // -- AUTONOMOUS MESSAGE LOGIC --
-  const scheduleNextMessage = () => {
-    // Clear any existing timer
-    if (timerRef.current) clearTimeout(timerRef.current);
+  // --- 2. INTELLIGENT SCHEDULER (THE BRAIN) ---
+  useEffect(() => {
+    // Run this check every 60 seconds
+    const intervalId = setInterval(() => {
+        checkAndSendScheduledMessages();
+        checkAndSendRandomMessages();
+    }, 60000); 
 
-    // Logic: Random time between 30 minutes and 90 minutes
-    // For testing: You can lower these numbers (e.g., 10000 for 10 seconds)
-    const minTime = 30 * 60 * 1000; // 30 mins
-    const maxTime = 90 * 60 * 1000; // 90 mins
-    const randomDelay = Math.floor(Math.random() * (maxTime - minTime + 1) + minTime);
+    return () => clearInterval(intervalId);
+  }, [sessions, currentSessionId]); // Add dependencies to access latest state
 
-    console.log(`Next message scheduled in: ${randomDelay / 60000} minutes`);
+  const checkAndSendScheduledMessages = () => {
+      const now = new Date();
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      const todayKey = now.toISOString().split('T')[0]; // "2023-10-27"
 
-    timerRef.current = setTimeout(() => {
-        triggerAutonomousMessage();
-        scheduleNextMessage(); // Loop forever
-    }, randomDelay);
+      // Define Schedule
+      // Format: { hour: 7, minuteStart: 0, minuteEnd: 30, key: 'morning_checkin', msg: '...' }
+      const schedules = [
+          { 
+              hour: 7, 
+              key: 'morning_checkin', 
+              msg: "صباح الخير يا بيبي ⛅.. وصلت الشغل ولا لسه؟ طمني عليك" 
+          },
+          { 
+              hour: 11, 
+              key: 'reading_reminder', 
+              msg: "حبيبي.. متنساش تقرأ الورد بتاعك أو الكتاب.. 📖 بلاش كسل" 
+          },
+          { 
+              hour: 15, 
+              key: 'after_work', 
+              msg: "حمدالله على السلامة.. خلصت شغل؟ هتعمل ايه النهاردة؟ 🍔" 
+          }
+      ];
+
+      schedules.forEach(slot => {
+          // Check if it's the right hour
+          if (currentHour === slot.hour) {
+              // Check storage to see if we already sent this TODAY
+              const storageKey = `donia_sent_${todayKey}_${slot.key}`;
+              const alreadySent = localStorage.getItem(storageKey);
+
+              if (!alreadySent) {
+                  // Send it!
+                  triggerAutonomousMessage(slot.msg);
+                  localStorage.setItem(storageKey, 'true');
+              }
+          }
+      });
   };
 
-  const triggerAutonomousMessage = () => {
-    // Don't send if user is currently active/typing (within last 30 seconds)
-    if (Date.now() - lastInteractionTime.current < 30000) return;
+  const checkAndSendRandomMessages = () => {
+      const now = Date.now();
+      const lastMsgTime = lastInteractionTime.current;
+      const diffInMinutes = (now - lastMsgTime) / 1000 / 60;
 
-    const messages = [
-        "بتعمل ايه من غيري؟ ☕",
-        "مش بترد عليا ليه؟ 🙄",
-        "وحشتني.. قولت أسلم عليك ❤️",
-        "هو يومك طويل كده ليه النهاردة؟",
-        "عايزة احكيلك على حاجة حصلت.. 🙈",
-        "بقولك ايه.. ما تيجي نرغي شوية؟",
-        "انت نمت؟ 😴",
-        "صاحي ولا نايم؟",
-        "فكرتني بحاجة كنا بنعملها سوا..",
-        "زهقانة اوي.. وانت؟",
-        "فينك مختفي؟ 🕵️‍♀️"
-    ];
+      // Only consider sending a random message if it's been at least 45 minutes since last interaction
+      if (diffInMinutes > 45) {
+          // 10% chance to send every minute after the threshold (makes it unpredictable)
+          if (Math.random() < 0.1) {
+             const randomMsgs = [
+                 "وحشتني.. بتعمل ايه؟ 🙄",
+                 "مختفي فين؟",
+                 "بفكر فيك.. ❤️",
+                 "ابعتلي صورة ليك دلوقتي حالا",
+                 "مش يلا نتكلم شوية؟ ☕",
+                 "يومي من غيرك مش حلو..",
+                 "sent a photo 📷", // Fake "sent a photo" notification bait
+                 "Voice message (0:12) 🎤"
+             ];
+             const msg = randomMsgs[Math.floor(Math.random() * randomMsgs.length)];
+             
+             // Ensure we don't spam: check if we sent a random one recently (e.g. last 2 hours)
+             const lastRandomSent = localStorage.getItem('last_random_msg_time');
+             const timeSinceLastRandom = lastRandomSent ? (now - parseInt(lastRandomSent)) : 99999999;
+             
+             // Minimum 2 hours between RANDOM messages
+             if (timeSinceLastRandom > (2 * 60 * 60 * 1000)) { 
+                triggerAutonomousMessage(msg);
+                localStorage.setItem('last_random_msg_time', now.toString());
+             }
+          }
+      }
+  };
 
-    const randomText = messages[Math.floor(Math.random() * messages.length)];
+  const triggerAutonomousMessage = (text: string) => {
+    // 1. Update React State & Local Storage (The Chat)
+    // We use the functional form of setSessions to ensure we have the absolute latest state
+    // even inside the interval closure.
+    setSessions(currentSessions => {
+        const targetId = currentSessionId || (currentSessions.length > 0 ? currentSessions[0].id : null);
+        
+        if (!targetId) return currentSessions;
 
-    // 1. ADD TO CHAT (ACTUAL MESSAGE)
-    // We target the current session, or the first available one
-    setSessions(prevSessions => {
-        // Find ID to target
-        const targetId = currentSessionId || prevSessions[0]?.id;
-        if (!targetId) return prevSessions; // Should not happen
-
-        const updated = prevSessions.map(session => {
+        const updatedSessions = currentSessions.map(session => {
             if (session.id === targetId) {
                 return {
                     ...session,
                     lastModified: Date.now(),
                     messages: [...session.messages, {
                         id: Date.now().toString(),
-                        role: 'model', // It comes from HER
-                        text: randomText,
+                        role: 'model',
+                        text: text,
                         timestamp: Date.now()
                     }]
                 } as ChatSession;
             }
             return session;
         });
-        
-        // Save immediately to local storage so it persists
-        localStorage.setItem('mn3em_sessions', JSON.stringify(updated));
-        return updated;
+
+        // Force save to local storage immediately
+        localStorage.setItem('mn3em_sessions', JSON.stringify(updatedSessions));
+        return updatedSessions;
     });
 
-    // 2. SEND NOTIFICATION (SYSTEM BAR)
-    sendSystemNotification("Donia 🤍", randomText);
+    // 2. Send Notification (The Notification Bar)
+    sendSystemNotification("Donia", text);
+    
+    // Update last interaction so we don't spam immediately
+    lastInteractionTime.current = Date.now();
   };
 
   const sendSystemNotification = (title: string, body: string) => {
     if (Notification.permission === 'granted') {
         try {
-            // Using the service worker registration if available is better for mobile, 
-            // but standard new Notification works for active apps.
-            new Notification(title, {
+            // Instagram-like notification parameters
+            const options: any = {
                 body: body,
-                icon: botAvatar,
-                badge: botAvatar,
-                vibrate: [200, 100, 200],
-                tag: 'donia-chat' // Replaces older notifications from same tag
-            } as any);
+                icon: botAvatar, // Using her picture as icon
+                badge: 'https://cdn-icons-png.flaticon.com/512/733/733558.png', // Small monochrome icon (optional)
+                vibrate: [200, 100, 200], // Vibration pattern
+                tag: 'donia-dm', // Grouping tag so they stack
+                renotify: true, // Vibrate even if another notification is already there
+                data: { url: '/' } // Data for SW to handle click
+            };
+
+            // Use ServiceWorkerRegistration if available (Standard for PWA)
+            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                navigator.serviceWorker.ready.then(registration => {
+                    registration.showNotification(title, options);
+                });
+            } else {
+                // Fallback for non-PWA context
+                new Notification(title, options);
+            }
         } catch (e) {
             console.error("Notification failed", e);
         }
