@@ -49,6 +49,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     activeTabRef.current = activeTab;
+    // Persist active tab so notifications open correctly
+    if (activeTab === Tab.ACTIVE_CHAT) {
+        localStorage.setItem('mn3em_saved_tab', Tab.ACTIVE_CHAT);
+    } else {
+        localStorage.removeItem('mn3em_saved_tab');
+    }
   }, [activeTab]);
 
   // Load Data
@@ -86,6 +92,12 @@ const App: React.FC = () => {
        } else {
          setCurrentSessionId(loadedSessions[0].id);
        }
+    }
+
+    // CHECK FOR SAVED TAB STATE (For Deep Linking from Notification)
+    const savedTabState = localStorage.getItem('mn3em_saved_tab');
+    if (savedTabState === Tab.ACTIVE_CHAT) {
+        setActiveTab(Tab.ACTIVE_CHAT);
     }
 
     // Check permission status on load
@@ -137,14 +149,19 @@ const App: React.FC = () => {
               msg: "صباح الخير.. 🌤️ اول ما توصل الشغل طمني عليك" 
           },
           { 
-              hour: 11, 
+              hour: 11, // 11:00 AM
               key: 'reading_reminder', 
-              msg: "بتعمل ايه؟ 🤔 متنساش تقرأ جزء الكتاب اللي عليك، بلاش كسل!" 
+              msg: "كملت قراية الكتاب النهاردة ؟ 📚 ولا لسه؟" 
           },
           { 
               hour: 15, // 3:00 PM
               key: 'after_work', 
               msg: "خلصت شغل ولا لسه؟ 🍔 هتعمل ايه النهاردة؟" 
+          },
+          {
+              hour: 21, // 9:00 PM
+              key: 'gym_check',
+              msg: "روحت الجيم النهاردة ولعبت زاوية ايه؟ 💪🏋️‍♂️"
           }
       ];
 
@@ -242,6 +259,13 @@ const App: React.FC = () => {
         });
 
         localStorage.setItem('mn3em_sessions', JSON.stringify(updatedSessions));
+        
+        // DEEP LINKING LOGIC:
+        // When we trigger a message, update the storage so if the user clicks the notification
+        // and the app reloads/focuses, it knows where to go.
+        localStorage.setItem('mn3em_current_session_id', targetId);
+        localStorage.setItem('mn3em_saved_tab', Tab.ACTIVE_CHAT);
+
         return updatedSessions;
     });
 
@@ -293,9 +317,7 @@ const App: React.FC = () => {
         // IMPORTANT: Set this as the current session ID in storage.
         // If the app is opened via notification, it will read this ID and open this chat.
         localStorage.setItem('mn3em_current_session_id', designSession.id);
-        
-        // If the app is currently open, we can optionally switch to it immediately:
-        // setCurrentSessionId(designSession.id); 
+        localStorage.setItem('mn3em_saved_tab', Tab.ACTIVE_CHAT);
         
         return updatedSessions;
     });
@@ -318,7 +340,7 @@ const App: React.FC = () => {
                 requireInteraction: true, // Keep notification until user interacts
                 data: { url: '/' },
                 actions: [
-                    { action: 'open', title: 'Open Chat' }
+                    { action: 'open', title: 'Reply' }
                 ]
             };
 
@@ -350,6 +372,7 @@ const App: React.FC = () => {
       
       if (currentTab !== Tab.CHAT) {
         setActiveTab(Tab.CHAT);
+        localStorage.setItem('mn3em_saved_tab', Tab.CHAT); // Reset tab state on back
         window.history.pushState(null, document.title, window.location.href);
       } else {
         const now = Date.now();
