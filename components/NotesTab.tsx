@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { Note } from '../types';
-import { Trash2, Plus, Bookmark, Camera, Wallpaper, Check } from 'lucide-react';
+import { Trash2, Plus, Bookmark, Camera, Wallpaper, Check, Bell, BellRing } from 'lucide-react';
 
 interface NotesTabProps {
   notes: Note[];
@@ -12,12 +12,18 @@ interface NotesTabProps {
   onUpdateBotAvatar: (url: string) => void;
   chatBackground: string | null;
   onUpdateChatBackground: (bg: string | null) => void;
+  
+  // Notification Props
+  permissionStatus: NotificationPermission;
+  onRequestPermission: () => void;
+  onTestNotification: () => void;
 }
 
 export const NotesTab: React.FC<NotesTabProps> = ({ 
   notes, onDelete, onAdd,
   userAvatar, botAvatar, onUpdateUserAvatar, onUpdateBotAvatar,
-  chatBackground, onUpdateChatBackground
+  chatBackground, onUpdateChatBackground,
+  permissionStatus, onRequestPermission, onTestNotification
 }) => {
   const [newNote, setNewNote] = React.useState('');
   const userFileInputRef = useRef<HTMLInputElement>(null);
@@ -146,6 +152,39 @@ export const NotesTab: React.FC<NotesTabProps> = ({
           </div>
         </div>
 
+        {/* NOTIFICATIONS CONTROL */}
+        <div className="p-6 mb-2 border-b border-[#262626]">
+           <h2 className="text-xs font-bold text-gray-500 mb-4 uppercase tracking-widest text-center flex items-center justify-center gap-2">
+             <Bell size={14} /> Notifications
+           </h2>
+
+           <div className="flex flex-col items-center gap-3">
+             <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${permissionStatus === 'granted' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                <span className="text-sm text-gray-300 capitalize">Status: {permissionStatus}</span>
+             </div>
+             
+             {permissionStatus !== 'granted' ? (
+                <button 
+                  onClick={onRequestPermission}
+                  className="bg-[#3797f0] text-white px-6 py-2 rounded-lg font-semibold text-sm w-full max-w-[200px]"
+                >
+                  Enable Notifications
+                </button>
+             ) : (
+                <button 
+                  onClick={onTestNotification}
+                  className="bg-[#262626] border border-gray-700 text-white px-6 py-2 rounded-lg font-semibold text-sm w-full max-w-[200px] flex items-center justify-center gap-2"
+                >
+                  <BellRing size={16} /> Test Notification
+                </button>
+             )}
+             <p className="text-[10px] text-gray-500 text-center px-4">
+                Note: On some phones, you must keep this app in the background (minimized) for notifications to arrive reliably.
+             </p>
+           </div>
+        </div>
+
         {/* CHAT WALLPAPER SECTION */}
         <div className="p-6 mb-2 border-b border-[#262626]">
           <h2 className="text-xs font-bold text-gray-500 mb-4 uppercase tracking-widest text-center flex items-center justify-center gap-2">
@@ -186,7 +225,6 @@ export const NotesTab: React.FC<NotesTabProps> = ({
                  onChange={(e) => handleFileSelect(e, 'bg')} 
              />
           </div>
-          <p className="text-[10px] text-gray-500 text-center">Select a color or tap the image icon to upload from gallery.</p>
         </div>
 
         {/* Add Note Section */}

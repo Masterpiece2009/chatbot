@@ -22,13 +22,15 @@ const App: React.FC = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
 
+  // -- NOTIFICATION STATE --
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
+
   // -- NOTIFICATION & AUTONOMOUS CHAT REFS --
   const lastInteractionTime = useRef<number>(Date.now());
   
   // -- EXIT LOGIC STATE --
   const lastBackPressTime = useRef<number>(0);
   const [showExitToast, setShowExitToast] = useState(false);
-  const [notificationStatus, setNotificationStatus] = useState<string>(""); 
 
   const activeTabRef = useRef(activeTab);
 
@@ -72,11 +74,28 @@ const App: React.FC = () => {
        }
     }
 
-    // --- 1. REQUEST PERMISSION ---
+    // Check permission status on load
     if ('Notification' in window) {
-      Notification.requestPermission();
+      setPermissionStatus(Notification.permission);
     }
   }, []);
+
+  // --- NOTIFICATION PERMISSION HANDLER ---
+  const requestNotificationAccess = async () => {
+    if (!('Notification' in window)) {
+      alert("This browser does not support desktop notification");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setPermissionStatus(permission);
+    if (permission === 'granted') {
+      sendSystemNotification("System", "تم تفعيل الإشعارات بنجاح! 🎉");
+    }
+  };
+
+  const sendTestNotification = () => {
+    sendSystemNotification("Donia", "test message.. وحشتني ❤️");
+  };
 
   // --- 2. INTELLIGENT SCHEDULER (THE BRAIN) ---
   useEffect(() => {
@@ -92,38 +111,36 @@ const App: React.FC = () => {
   const checkAndSendScheduledMessages = () => {
       const now = new Date();
       const currentHour = now.getHours();
-      const currentMinute = now.getMinutes();
+      // const currentMinute = now.getMinutes(); 
       const todayKey = now.toISOString().split('T')[0]; // "2023-10-27"
 
-      // Define Schedule
-      // Format: { hour: 7, minuteStart: 0, minuteEnd: 30, key: 'morning_checkin', msg: '...' }
+      // Define Schedule (Updated as per user request)
       const schedules = [
           { 
               hour: 7, 
               key: 'morning_checkin', 
-              msg: "صباح الخير يا بيبي ⛅.. وصلت الشغل ولا لسه؟ طمني عليك" 
+              msg: "صباح الخير.. 🌤️ اول ما توصل الشغل طمني عليك" 
           },
           { 
               hour: 11, 
               key: 'reading_reminder', 
-              msg: "حبيبي.. متنساش تقرأ الورد بتاعك أو الكتاب.. 📖 بلاش كسل" 
+              msg: "بتعمل ايه؟ 🤔 متنساش تقرأ جزء الكتاب اللي عليك، بلاش كسل!" 
           },
           { 
-              hour: 15, 
+              hour: 15, // 3:00 PM
               key: 'after_work', 
-              msg: "حمدالله على السلامة.. خلصت شغل؟ هتعمل ايه النهاردة؟ 🍔" 
+              msg: "خلصت شغل ولا لسه؟ 🍔 هتعمل ايه النهاردة؟" 
           }
       ];
 
       schedules.forEach(slot => {
-          // Check if it's the right hour
+          // Check if it's the right hour (allows for a 59-minute window to catch it if phone was asleep)
           if (currentHour === slot.hour) {
               // Check storage to see if we already sent this TODAY
               const storageKey = `donia_sent_${todayKey}_${slot.key}`;
               const alreadySent = localStorage.getItem(storageKey);
 
               if (!alreadySent) {
-                  // Send it!
                   triggerAutonomousMessage(slot.msg);
                   localStorage.setItem(storageKey, 'true');
               }
@@ -136,10 +153,10 @@ const App: React.FC = () => {
       const lastMsgTime = lastInteractionTime.current;
       const diffInMinutes = (now - lastMsgTime) / 1000 / 60;
 
-      // Only consider sending a random message if it's been at least 45 minutes since last interaction
-      if (diffInMinutes > 45) {
-          // 10% chance to send every minute after the threshold (makes it unpredictable)
-          if (Math.random() < 0.1) {
+      // Only consider sending a random message if it's been at least 60 minutes since last interaction
+      if (diffInMinutes > 60) {
+          // 5% chance to send every minute check (makes it unpredictable but eventually happens)
+          if (Math.random() < 0.05) {
              const randomMsgs = [
                  "وحشتني.. بتعمل ايه؟ 🙄",
                  "مختفي فين؟",
@@ -147,17 +164,19 @@ const App: React.FC = () => {
                  "ابعتلي صورة ليك دلوقتي حالا",
                  "مش يلا نتكلم شوية؟ ☕",
                  "يومي من غيرك مش حلو..",
-                 "sent a photo 📷", // Fake "sent a photo" notification bait
-                 "Voice message (0:12) 🎤"
+                 "sent a photo 📷", 
+                 "Voice message (0:12) 🎤",
+                 "هو احنا مش هنتكلم النهاردة؟",
+                 "عايزة احكيلك حاجة حصلت.."
              ];
              const msg = randomMsgs[Math.floor(Math.random() * randomMsgs.length)];
              
-             // Ensure we don't spam: check if we sent a random one recently (e.g. last 2 hours)
+             // Ensure we don't spam: check if we sent a random one recently (e.g. last 3 hours)
              const lastRandomSent = localStorage.getItem('last_random_msg_time');
              const timeSinceLastRandom = lastRandomSent ? (now - parseInt(lastRandomSent)) : 99999999;
              
-             // Minimum 2 hours between RANDOM messages
-             if (timeSinceLastRandom > (2 * 60 * 60 * 1000)) { 
+             // Minimum 3 hours between RANDOM messages
+             if (timeSinceLastRandom > (3 * 60 * 60 * 1000)) { 
                 triggerAutonomousMessage(msg);
                 localStorage.setItem('last_random_msg_time', now.toString());
              }
@@ -167,8 +186,6 @@ const App: React.FC = () => {
 
   const triggerAutonomousMessage = (text: string) => {
     // 1. Update React State & Local Storage (The Chat)
-    // We use the functional form of setSessions to ensure we have the absolute latest state
-    // even inside the interval closure.
     setSessions(currentSessions => {
         const targetId = currentSessionId || (currentSessions.length > 0 ? currentSessions[0].id : null);
         
@@ -190,7 +207,6 @@ const App: React.FC = () => {
             return session;
         });
 
-        // Force save to local storage immediately
         localStorage.setItem('mn3em_sessions', JSON.stringify(updatedSessions));
         return updatedSessions;
     });
@@ -206,14 +222,17 @@ const App: React.FC = () => {
     if (Notification.permission === 'granted') {
         try {
             // Instagram-like notification parameters
-            const options: any = {
+            const options: any = { // Using any to bypass TS strict typing for 'vibrate' on some envs
                 body: body,
                 icon: botAvatar, // Using her picture as icon
-                badge: 'https://cdn-icons-png.flaticon.com/512/733/733558.png', // Small monochrome icon (optional)
+                badge: 'https://cdn-icons-png.flaticon.com/512/733/733558.png', // Small monochrome icon 
                 vibrate: [200, 100, 200], // Vibration pattern
-                tag: 'donia-dm', // Grouping tag so they stack
+                tag: 'donia-dm', // Grouping tag
                 renotify: true, // Vibrate even if another notification is already there
-                data: { url: '/' } // Data for SW to handle click
+                data: { url: '/' },
+                actions: [
+                    { action: 'reply', title: 'Reply' }
+                ]
             };
 
             // Use ServiceWorkerRegistration if available (Standard for PWA)
@@ -222,7 +241,6 @@ const App: React.FC = () => {
                     registration.showNotification(title, options);
                 });
             } else {
-                // Fallback for non-PWA context
                 new Notification(title, options);
             }
         } catch (e) {
@@ -234,11 +252,6 @@ const App: React.FC = () => {
   // -- EVENT HANDLING --
   const updateInteraction = () => {
     lastInteractionTime.current = Date.now();
-    
-    // Retry permission if not granted yet
-    if (Notification.permission === 'default') {
-        Notification.requestPermission();
-    }
   };
 
   // -- BACK BUTTON HANDLING --
@@ -498,6 +511,9 @@ const App: React.FC = () => {
               onUpdateBotAvatar={setBotAvatar}
               chatBackground={chatBackground}
               onUpdateChatBackground={setChatBackground}
+              permissionStatus={permissionStatus}
+              onRequestPermission={requestNotificationAccess}
+              onTestNotification={sendTestNotification}
             />
           )}
         </div>
