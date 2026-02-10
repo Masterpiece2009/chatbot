@@ -8,14 +8,14 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://img.freepik.com/free-photo/androgynous-avatar-non-binary-queer-person_23-2151100221.jpg?t=st=1770644796~exp=1770648396~hmac=d7a2cc831cfe81ff389856baa483b6c70e9c3c9bb0cf6828747fcadb200a66fe",
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png",
       "sizes": "192x192",
-      "type": "image/jpeg"
+      "type": "image/png"
     },
     {
-      "src": "https://img.freepik.com/free-photo/androgynous-avatar-non-binary-queer-person_23-2151100221.jpg?t=st=1770644796~exp=1770648396~hmac=d7a2cc831cfe81ff389856baa483b6c70e9c3c9bb0cf6828747fcadb200a66fe",
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png",
       "sizes": "512x512",
-      "type": "image/jpeg"
+      "type": "image/png"
     }
   ]
 }

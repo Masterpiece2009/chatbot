@@ -120,7 +120,7 @@ const App: React.FC = () => {
   };
 
   const sendTestNotification = () => {
-    sendSystemNotification("Donia", "test message.. وحشتني ❤️");
+    sendSystemNotification("Donia", ".. وحشتني ❤️");
   };
 
   // --- 2. INTELLIGENT SCHEDULER (THE BRAIN) ---
@@ -132,41 +132,59 @@ const App: React.FC = () => {
         checkAndSendStudyTips();
     }, 60000); 
 
+    // Initial check on mount (optional, to catch if we opened app exactly at the minute)
+    checkAndSendScheduledMessages();
+
     return () => clearInterval(intervalId);
   }, [sessions, currentSessionId]); // Add dependencies to access latest state
 
   const checkAndSendScheduledMessages = () => {
-      const now = new Date();
-      const currentHour = now.getHours();
-      // const currentMinute = now.getMinutes(); 
-      const todayKey = now.toISOString().split('T')[0]; // "2023-10-27"
+      // 🛑 TIMEZONE LOGIC: EGYPT (Africa/Cairo)
+      // We explicitly check the time in Cairo to ensure notifications align with Egypt time
+      const egyptDateStr = new Date().toLocaleString("en-US", {timeZone: "Africa/Cairo"});
+      const egyptDate = new Date(egyptDateStr);
+      
+      const currentHour = egyptDate.getHours();
+      const currentMinute = egyptDate.getMinutes();
 
-      // Define Schedule (Updated as per user request)
+      // We use ISO string date part for uniqueness per day.
+      // Note: We use the DEVICE date for the key to ensure it only fires once per "User Day",
+      // but we use EGYPT hour/minute to decide WHEN to fire.
+      const todayKey = new Date().toISOString().split('T')[0]; 
+
+      // Define Schedule (Aligned to Egypt Time)
+      // Added 'minute' field for precision
       const schedules = [
           { 
-              hour: 7, 
+              hour: 7, minute: 0,
               key: 'morning_checkin', 
               msg: "صباح الخير.. 🌤️ اول ما توصل الشغل طمني عليك" 
           },
           { 
-              hour: 11, // 11:00 AM
+              hour: 11, minute: 0, // 11:00 AM Egypt
               key: 'reading_reminder', 
-              msg: "كملت قراية الكتاب النهاردة ؟ 📚 ولا لسه؟" 
+              msg: "كملت قراية الكتاب النهاردة ؟ 📚" 
+          },
+          {
+              hour: 14, minute: 30, // 2:30 PM Egypt
+              key: 'oats_check',
+              msg: "اكلت الشوفان بتاعك ولا لسه ؟؟ 🥣"
           },
           { 
-              hour: 15, // 3:00 PM
+              hour: 15, minute: 0, // 3:00 PM Egypt
               key: 'after_work', 
               msg: "خلصت شغل ولا لسه؟ 🍔 هتعمل ايه النهاردة؟" 
           },
           {
-              hour: 21, // 9:00 PM
+              hour: 21, minute: 0, // 9:00 PM Egypt
               key: 'gym_check',
               msg: "روحت الجيم النهاردة ولعبت زاوية ايه؟ 💪🏋️‍♂️"
           }
       ];
 
       schedules.forEach(slot => {
-          if (currentHour === slot.hour) {
+          // Check if current Cairo Time matches the slot time
+          if (currentHour === slot.hour && currentMinute === slot.minute) {
               const storageKey = `donia_sent_${todayKey}_${slot.key}`;
               const alreadySent = localStorage.getItem(storageKey);
 
@@ -260,11 +278,12 @@ const App: React.FC = () => {
 
         localStorage.setItem('mn3em_sessions', JSON.stringify(updatedSessions));
         
-        // DEEP LINKING LOGIC:
-        // When we trigger a message, update the storage so if the user clicks the notification
-        // and the app reloads/focuses, it knows where to go.
+        // DEEP LINKING & AUTO-OPEN LOGIC
         localStorage.setItem('mn3em_current_session_id', targetId);
         localStorage.setItem('mn3em_saved_tab', Tab.ACTIVE_CHAT);
+        
+        // If the app is open/foreground, switch immediately
+        setActiveTab(Tab.ACTIVE_CHAT);
 
         return updatedSessions;
     });
@@ -314,10 +333,13 @@ const App: React.FC = () => {
 
         localStorage.setItem('mn3em_sessions', JSON.stringify(updatedSessions));
         
-        // IMPORTANT: Set this as the current session ID in storage.
-        // If the app is opened via notification, it will read this ID and open this chat.
+        // DEEP LINKING & AUTO-OPEN LOGIC
         localStorage.setItem('mn3em_current_session_id', designSession.id);
         localStorage.setItem('mn3em_saved_tab', Tab.ACTIVE_CHAT);
+        
+        // If the app is open/foreground, switch immediately
+        setCurrentSessionId(designSession.id);
+        setActiveTab(Tab.ACTIVE_CHAT);
         
         return updatedSessions;
     });
@@ -333,7 +355,7 @@ const App: React.FC = () => {
             const options: any = { 
                 body: body,
                 icon: botAvatar, 
-                badge: 'https://cdn-icons-png.flaticon.com/512/733/733558.png', 
+                badge: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Instagram_icon.png/600px-Instagram_icon.png', 
                 vibrate: [200, 100, 200], 
                 tag: 'donia-dm', 
                 renotify: true, 
