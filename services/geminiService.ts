@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 // API KEYS
-const GROQ_API_KEY = "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";
+const GROQ_API_KEY = "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";
 
 // System instruction for Donia: Senior System Architect & Supportive Partner
 const SYSTEM_INSTRUCTION = `
@@ -89,7 +89,7 @@ export const sendMessage = async (
 
   } catch (error: any) {
     console.error("Chat Error:", error);
-    return "مش عارفة أوصل للسيرفر.. شكلك نحستني 😂";
+    return "مش عارفة أوصل للسيرفر..  😂";
   }
 };
 
