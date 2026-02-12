@@ -124,6 +124,7 @@ const App: React.FC = () => {
   };
 
   // --- 2. INTELLIGENT SCHEDULER (THE BRAIN) ---
+  // Added botAvatar to dependencies so the closure always has the latest image
   useEffect(() => {
     // 1. Regular Interval Check (every 60s)
     const intervalId = setInterval(() => {
@@ -154,7 +155,7 @@ const App: React.FC = () => {
         document.removeEventListener("visibilitychange", handleReactivation);
         window.removeEventListener("online", handleReactivation);
     };
-  }, [sessions, currentSessionId]); 
+  }, [sessions, currentSessionId, botAvatar]); 
 
   const checkAndSendScheduledMessages = () => {
       // 🛑 TIMEZONE LOGIC: EGYPT (Africa/Cairo)
