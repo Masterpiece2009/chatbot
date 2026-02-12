@@ -125,35 +125,58 @@ const App: React.FC = () => {
 
   // --- 2. INTELLIGENT SCHEDULER (THE BRAIN) ---
   useEffect(() => {
-    // Run this check every 60 seconds
+    // 1. Regular Interval Check (every 60s)
     const intervalId = setInterval(() => {
         checkAndSendScheduledMessages();
         checkAndSendRandomMessages();
         checkAndSendStudyTips();
     }, 60000); 
 
-    // Initial check on mount (optional, to catch if we opened app exactly at the minute)
+    // 2. Reactivation Triggers (Catch-up when app opens/online)
+    const handleReactivation = () => {
+        // console.log("App reactivated/online - Checking schedule...");
+        checkAndSendScheduledMessages();
+        // We do NOT aggressively trigger random messages here to avoid spam on open
+    };
+
+    window.addEventListener("focus", handleReactivation);
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === 'visible') handleReactivation();
+    });
+    window.addEventListener("online", handleReactivation);
+
+    // Initial check on mount
     checkAndSendScheduledMessages();
 
-    return () => clearInterval(intervalId);
-  }, [sessions, currentSessionId]); // Add dependencies to access latest state
+    return () => {
+        clearInterval(intervalId);
+        window.removeEventListener("focus", handleReactivation);
+        document.removeEventListener("visibilitychange", handleReactivation);
+        window.removeEventListener("online", handleReactivation);
+    };
+  }, [sessions, currentSessionId]); 
 
   const checkAndSendScheduledMessages = () => {
       // 🛑 TIMEZONE LOGIC: EGYPT (Africa/Cairo)
-      // We explicitly check the time in Cairo to ensure notifications align with Egypt time
+      // Get current Egypt time
       const egyptDateStr = new Date().toLocaleString("en-US", {timeZone: "Africa/Cairo"});
       const egyptDate = new Date(egyptDateStr);
       
       const currentHour = egyptDate.getHours();
       const currentMinute = egyptDate.getMinutes();
+      const currentTotalMinutes = currentHour * 60 + currentMinute;
 
-      // We use ISO string date part for uniqueness per day.
-      // Note: We use the DEVICE date for the key to ensure it only fires once per "User Day",
-      // but we use EGYPT hour/minute to decide WHEN to fire.
-      const todayKey = new Date().toISOString().split('T')[0]; 
+      // 📅 STRICT DATE KEY (EGYPT BASED)
+      // Prevents "Tomorrow UTC" vs "Today Cairo" conflicts.
+      // We use Intl to strictly get the YYYY-MM-DD in Cairo timezone.
+      const todayKey = new Intl.DateTimeFormat('en-CA', { 
+        timeZone: 'Africa/Cairo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(new Date());
 
       // Define Schedule (Aligned to Egypt Time)
-      // Added 'minute' field for precision
       const schedules = [
           { 
               hour: 7, minute: 0,
@@ -161,30 +184,39 @@ const App: React.FC = () => {
               msg: "صباح الخير.. 🌤️ اول ما توصل الشغل طمني عليك" 
           },
           { 
-              hour: 11, minute: 0, // 11:00 AM Egypt
+              hour: 11, minute: 0, 
               key: 'reading_reminder', 
               msg: "كملت قراية الكتاب النهاردة ؟ 📚" 
           },
           {
-              hour: 14, minute: 30, // 2:30 PM Egypt
+              hour: 14, minute: 30, // 2:30 PM
               key: 'oats_check',
               msg: "اكلت الشوفان بتاعك ولا لسه ؟؟ 🥣"
           },
           { 
-              hour: 15, minute: 0, // 3:00 PM Egypt
+              hour: 15, minute: 0, 
               key: 'after_work', 
               msg: "خلصت شغل ولا لسه؟ 🍔 هتعمل ايه النهاردة؟" 
           },
           {
-              hour: 21, minute: 0, // 9:00 PM Egypt
+              hour: 21, minute: 0, 
               key: 'gym_check',
               msg: "روحت الجيم النهاردة ولعبت زاوية ايه؟ 💪🏋️‍♂️"
           }
       ];
 
       schedules.forEach(slot => {
-          // Check if current Cairo Time matches the slot time
-          if (currentHour === slot.hour && currentMinute === slot.minute) {
+          const slotTotalMinutes = slot.hour * 60 + slot.minute;
+          const timeDiff = currentTotalMinutes - slotTotalMinutes;
+
+          // 🧠 CATCH-UP LOGIC:
+          // If timeDiff >= 0: The time has passed.
+          // If timeDiff < 180: It passed LESS than 3 hours ago.
+          // This creates a "Validity Window". 
+          // Example: If it's 3:00 PM (15:00), and Oat slot is 2:30 PM (14:30), diff is 30 mins. It SENDS.
+          // If it's 9:00 PM, diff is > 180 mins. It skips "Oats" (too late).
+          
+          if (timeDiff >= 0 && timeDiff < 180) { // 3 Hour catch-up window
               const storageKey = `donia_sent_${todayKey}_${slot.key}`;
               const alreadySent = localStorage.getItem(storageKey);
 

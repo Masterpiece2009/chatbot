@@ -89,7 +89,7 @@ export const sendMessage = async (
 
   } catch (error: any) {
     console.error("Chat Error:", error);
-    return "مش عارفة أوصل للسيرفر..  😂";
+    return "مش عارفة أوصل للسيرفر.. شكلك نحستني 😂";
   }
 };
 
